@@ -3,17 +3,11 @@ LFPset.py
 LFPset is a wrapper class for a Pandas dataframe object containing LFP data.
 Implements methods from physutils.py.
 
-Methods:
-decimate
-bandlimit
-instantaneous power
-censor
-evtsplit
-
 As per Pandas convention, these should return new dataframes.
 """
 
 import physutils
+import physutils.bootstrap as boot
 import numpy as np
 from scipy.signal import hilbert
 import pandas as pd
@@ -190,16 +184,16 @@ class LFPset(object):
         cluster_masses = []
         for ind in np.arange(niter):
             labels = np.random.permutation(alltimes['label'])
-            pos = physutils.make_thresholded_diff(spectra, labels, hi=thhi)
-            neg = physutils.make_thresholded_diff(spectra, labels, lo=thlo)
+            pos = boot.make_thresholded_diff(spectra, labels, hi=thhi)
+            neg = boot.make_thresholded_diff(spectra, labels, lo=thlo)
 
-            posclus = physutils.label_clusters(pos)
-            negclus = physutils.label_clusters(neg)
+            posclus = boot.label_clusters(pos)
+            negclus = boot.label_clusters(neg)
 
             cluster_masses = np.concatenate([
                 cluster_masses,
-                physutils.get_cluster_masses(pos, posclus), 
-                physutils.get_cluster_masses(neg, negclus)
+                boot.get_cluster_masses(pos, posclus), 
+                boot.get_cluster_masses(neg, negclus)
                 ])
 
         # extract cluster size thresholds based on null distribution
@@ -213,7 +207,7 @@ class LFPset(object):
 
         # get significance-masked array for statistic image
         truelabels = alltimes['label'].values
-        signif = physutils.threshold_clusters(spectra, truelabels, lo=thlo,
+        signif = boot.threshold_clusters(spectra, truelabels, lo=thlo,
             hi=thhi, keeplo=Clo, keephi=Chi)
 
         # make contrast image
@@ -231,36 +225,3 @@ class LFPset(object):
             fig = None
 
         return mcontrast, fig 
-
-
-def fetch_LFP(dbname, *tup):
-    """ 
-    Given a database and a tuple (tup), return an LFPset object.
-    """
-
-    lfp = physutils.fetch(dbname, 'lfp', *tup)
-    lfp = lfp.set_index(['time', 'channel'])
-    lfp = lfp['voltage']
-    lfp = lfp.unstack()
-    
-    dt = lfp.index[1] - lfp.index[0]
-    sr = 1. / dt
-    meta = {'dbname': dbname, 'tuple': tup, 'sr': sr}
-
-    return LFPset(lfp, meta)    
-
-def fetch_all_such_LFP(dbname, *tup, **kwargs):
-    """ 
-    Given a database and a tuple (tup), return an LFPset object.
-    """
-
-    lfp = physutils.fetch_all_such(dbname, 'lfp', *tup, **kwargs)
-    lfp = lfp.set_index(['time', 'channel'])
-    lfp = lfp['voltage']
-    lfp = lfp.unstack()
-    
-    dt = lfp.index[1] - lfp.index[0]
-    sr = 1. / dt
-    meta = {'dbname': dbname, 'tuple': tup, 'sr': sr}
-
-    return LFPset(lfp, meta)

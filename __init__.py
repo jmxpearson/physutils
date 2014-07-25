@@ -6,6 +6,8 @@ from matplotlib.image import NonUniformImage
 import matplotlib.pyplot as plt
 import warnings
 
+from .classes import lfp
+
 def decimate(x, decfrac, axis=-1):
     """
     just like in the scipy source code, except I use filtfilt

@@ -1,13 +1,12 @@
 """
 LFPset.py
 LFPset is a wrapper class for a Pandas dataframe object containing LFP data.
-Implements methods from physutils.py.
+Implements methods from py.
 
 As per Pandas convention, these should return new dataframes.
 """
 
-import physutils
-import physutils.bootstrap as boot
+from .. import bootstrap as boot
 import numpy as np
 from scipy.signal import hilbert
 import pandas as pd
@@ -28,13 +27,13 @@ class LFPset(object):
         return 'LFP dataset object containing a\n' + self.dataframe.__repr__()
 
     def decimate(self, decfrac):
-        newdf = physutils.dfdecimate(self.dataframe, decfrac)
+        newdf = dfdecimate(self.dataframe, decfrac)
         newmeta = self.meta.copy()
         newmeta['sr'] = newmeta.get('sr', None) / np.product(decfrac)
         return LFPset(newdf, newmeta)
 
     def bandlimit(self, *args):
-        newdf = physutils.dfbandlimit(self.dataframe, *args)
+        newdf = dfbandlimit(self.dataframe, *args)
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 
@@ -75,7 +74,7 @@ class LFPset(object):
         return LFPset(newdf, newmeta)
 
     def censor(self):
-        excludes = physutils.get_censor(
+        excludes = get_censor(
             self.meta['dbname'], self.dataframe.index, *self.meta['tuple'])
         if not excludes.empty:
             excludes = excludes[excludes.columns.intersection(
@@ -92,7 +91,7 @@ class LFPset(object):
 
     def evtsplit(self, times, Tpre, Tpost, t0=0):
         # note: Tpre < 0 for times before the events in times
-        split_to_series = lambda x: physutils.evtsplit(x, times, Tpre, Tpost, 
+        split_to_series = lambda x: evtsplit(x, times, Tpre, Tpost, 
             t0).unstack()
         return self.dataframe.apply(split_to_series)
 
@@ -105,15 +104,15 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = physutils.continuous_wavelet
+            callback = continuous_wavelet
         else:
-            callback = physutils.spectrogram
+            callback = spectrogram
 
-        tf = physutils.avg_time_frequency(series, callback, times, Tpre, 
+        tf = avg_time_frequency(series, callback, times, Tpre, 
             Tpost, **kwargs)
 
         if doplot:
-            fig = physutils.plot_time_frequency(tf)
+            fig = plot_time_frequency(tf)
         else:
             fig = None
 
@@ -130,17 +129,17 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = physutils.continuous_wavelet
+            callback = continuous_wavelet
         else:
-            callback = physutils.spectrogram
+            callback = spectrogram
 
-        tf0 = physutils.avg_time_frequency(series, callback, times[0], Tpre, 
+        tf0 = avg_time_frequency(series, callback, times[0], Tpre, 
             Tpost, **kwargs)
-        tf1 = physutils.avg_time_frequency(series, callback, times[1], Tpre, 
+        tf1 = avg_time_frequency(series, callback, times[1], Tpre, 
             Tpost, **kwargs)
 
         if doplot:
-            fig = physutils.plot_time_frequency(tf0 / tf1) 
+            fig = plot_time_frequency(tf0 / tf1) 
         else:
             fig = None
 
@@ -160,9 +159,9 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = physutils.continuous_wavelet
+            callback = continuous_wavelet
         else:
-            callback = physutils.spectrogram
+            callback = spectrogram
 
         # make a dataframe containing all times, labeled by event type
         t0 = pd.DataFrame({'time': times[0], 'label': 0})
@@ -170,7 +169,7 @@ class LFPset(object):
         alltimes = pd.concat([t0, t1])
 
         # get time-frequency matrix for each event
-        spectra, taxis, faxis = physutils.per_event_time_frequency(series,
+        spectra, taxis, faxis = per_event_time_frequency(series,
             callback, alltimes['time'], Tpre, Tpost, **kwargs)
 
         try: 
@@ -211,8 +210,8 @@ class LFPset(object):
             hi=thhi, keeplo=Clo, keephi=Chi)
 
         # make contrast image
-        img0 = physutils.mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
-        img1 = physutils.mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
+        img0 = mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
+        img1 = mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
         contrast = img0 / img1
 
         # use mask from statistic map to mask original data
@@ -220,7 +219,7 @@ class LFPset(object):
 
         if doplot:
             color_lims = (np.amin(10 * np.log10(contrast.values)), np.amax(10 * np.log10(contrast.values)))
-            fig = physutils.plot_time_frequency(mcontrast, clim=color_lims) 
+            fig = plot_time_frequency(mcontrast, clim=color_lims) 
         else:
             fig = None
 

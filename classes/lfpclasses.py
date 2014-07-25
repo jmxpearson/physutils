@@ -73,7 +73,20 @@ class LFPset(object):
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 
-    def censor(self, excludes):
+    def censor(self, excludes=None, get_censor=None):
+        """
+        Censor lfp, replacing with NaNs. Censoring specified either by:
+        1) excludes, a numpy array of start time, stop time pairs
+        2) get_censor, a function that is passed self and should 
+        return an excludes array
+        Option 1 overrides option 2
+        """
+        if not excludes:
+            if get_censor:
+                excludes = get_censor(self)
+            else:
+                return self
+
         if not excludes.empty:
             excludes = excludes[excludes.columns.intersection(
                 self.dataframe.columns)]

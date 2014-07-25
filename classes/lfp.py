@@ -5,7 +5,7 @@ Implements methods from py.
 
 As per Pandas convention, these should return new dataframes.
 """
-
+from .. import core
 from .. import bootstrap as boot
 import numpy as np
 from scipy.signal import hilbert
@@ -27,13 +27,13 @@ class LFPset(object):
         return 'LFP dataset object containing a\n' + self.dataframe.__repr__()
 
     def decimate(self, decfrac):
-        newdf = dfdecimate(self.dataframe, decfrac)
+        newdf = core.dfdecimate(self.dataframe, decfrac)
         newmeta = self.meta.copy()
         newmeta['sr'] = newmeta.get('sr', None) / np.product(decfrac)
         return LFPset(newdf, newmeta)
 
     def bandlimit(self, *args):
-        newdf = dfbandlimit(self.dataframe, *args)
+        newdf = core.dfbandlimit(self.dataframe, *args)
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 
@@ -73,9 +73,7 @@ class LFPset(object):
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 
-    def censor(self):
-        excludes = get_censor(
-            self.meta['dbname'], self.dataframe.index, *self.meta['tuple'])
+    def censor(self, excludes):
         if not excludes.empty:
             excludes = excludes[excludes.columns.intersection(
                 self.dataframe.columns)]
@@ -91,7 +89,7 @@ class LFPset(object):
 
     def evtsplit(self, times, Tpre, Tpost, t0=0):
         # note: Tpre < 0 for times before the events in times
-        split_to_series = lambda x: evtsplit(x, times, Tpre, Tpost, 
+        split_to_series = lambda x: core.evtsplit(x, times, Tpre, Tpost, 
             t0).unstack()
         return self.dataframe.apply(split_to_series)
 
@@ -104,15 +102,15 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = continuous_wavelet
+            callback = core.continuous_wavelet
         else:
-            callback = spectrogram
+            callback = core.spectrogram
 
-        tf = avg_time_frequency(series, callback, times, Tpre, 
+        tf = core.avg_time_frequency(series, callback, times, Tpre, 
             Tpost, **kwargs)
 
         if doplot:
-            fig = plot_time_frequency(tf)
+            fig = core.plot_time_frequency(tf)
         else:
             fig = None
 
@@ -129,17 +127,17 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = continuous_wavelet
+            callback = core.continuous_wavelet
         else:
-            callback = spectrogram
+            callback = core.spectrogram
 
-        tf0 = avg_time_frequency(series, callback, times[0], Tpre, 
+        tf0 = core.avg_time_frequency(series, callback, times[0], Tpre, 
             Tpost, **kwargs)
-        tf1 = avg_time_frequency(series, callback, times[1], Tpre, 
+        tf1 = core.avg_time_frequency(series, callback, times[1], Tpre, 
             Tpost, **kwargs)
 
         if doplot:
-            fig = plot_time_frequency(tf0 / tf1) 
+            fig = core.plot_time_frequency(tf0 / tf1) 
         else:
             fig = None
 
@@ -159,9 +157,9 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = continuous_wavelet
+            callback = core.continuous_wavelet
         else:
-            callback = spectrogram
+            callback = core.spectrogram
 
         # make a dataframe containing all times, labeled by event type
         t0 = pd.DataFrame({'time': times[0], 'label': 0})
@@ -169,7 +167,7 @@ class LFPset(object):
         alltimes = pd.concat([t0, t1])
 
         # get time-frequency matrix for each event
-        spectra, taxis, faxis = per_event_time_frequency(series,
+        spectra, taxis, faxis = core.per_event_time_frequency(series,
             callback, alltimes['time'], Tpre, Tpost, **kwargs)
 
         try: 
@@ -210,8 +208,8 @@ class LFPset(object):
             hi=thhi, keeplo=Clo, keephi=Chi)
 
         # make contrast image
-        img0 = mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
-        img1 = mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
+        img0 = core.mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
+        img1 = core.mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
         contrast = img0 / img1
 
         # use mask from statistic map to mask original data
@@ -219,7 +217,7 @@ class LFPset(object):
 
         if doplot:
             color_lims = (np.amin(10 * np.log10(contrast.values)), np.amax(10 * np.log10(contrast.values)))
-            fig = plot_time_frequency(mcontrast, clim=color_lims) 
+            fig = core.plot_time_frequency(mcontrast, clim=color_lims) 
         else:
             fig = None
 

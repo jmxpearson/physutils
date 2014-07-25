@@ -1,19 +1,11 @@
-import h5py
 import numpy as np
 import pandas as pd
-import pandas.io.pytables as pdtbl
 import scipy.signal as ssig
 from matplotlib.mlab import specgram
 from matplotlib.image import NonUniformImage
 import matplotlib.pyplot as plt
 from unionfind import UnionFind
 import warnings
-
-def make_path(*tup):
-    abbr = ['p', 'd', 'c', 'u'][:len(tup)]
-    nstrs = map(str, tup)
-    pieces = [a + b for a,b in zip(abbr, nstrs)]
-    return '/'.join(pieces)
 
 def decimate(x, decfrac, axis=-1):
     """
@@ -494,127 +486,6 @@ def get_cluster_masses(arr, indices):
     counts = counts[1:]  # get rid of "cluster" labeled 0
     return counts
     
-def fetch(dbname, node, *args):
-    """
-    Given a node ('lfp', 'spikes', 'events', 'censor'), and
-    a tuple of (patient, dataset, channel, unit), retrieves data.
-    """
-    target = node + '/' + make_path(*args)
-    return pd.read_hdf(dbname, target)
-
-def fetch_metadata(dbname, node, *args):
-    # have to get metadata this way because we didn't store it via pandas
-    # (which currently has no support for dataframe metadata)
-    target = node + '/' + make_path(*args)
-    fobj = h5py.File(dbname, 'r')
-    attdict = dict(fobj[target].attrs)
-    fobj.close()
-    return attdict
-
-def fetch_all_such(dbname, node, *args, **kwargs):
-    """
-    Given an incomplete specification in args, get all datasets consistent
-    with it. Return a single dataframe.
-    If database keys are precomputed to save time, they can be specified.
-    """
-    if 'keys' in kwargs:
-        keys = kwargs['keys']
-    else:
-        keys = pdtbl.HDFStore(dbname).keys()
-
-    glob = node + '/' + make_path(*args)
-    # do really simple regex matching
-    matches = [k for k in keys if glob in k]
-
-    if matches:
-        parts = []
-        for m in matches:
-            parts.append(fetch(dbname, m))
-        excl = pd.concat(parts)
-    else:
-        excl = pd.DataFrame([])
-
-    return excl
-
-def get_censor(dbname, taxis, *args):
-    """
-    Convenience function for retrieving censoring intervals from the db
-    and converting to logical arrays, one entry for each time point.
-    args = patient, dataset, channel
-    Assumes timestamp range equal to that of lfp.
-    """
-    
-    # make sure tindex is of type float64
-    ##### should be able to remove when pandas is upgraded to 0.13, which 
-    ##### allows for float64 indices
-    taxis = pd.Series(taxis.values.astype('float64'))
-
-    # get censoring intervals, group by channel
-    censors = fetch_all_such(dbname, 'censor', *args)
-    if not censors.empty:
-        censors = censors.groupby('channel')
-    else:
-        return censors
-    
-    # arrange start and stop times into linear sequence
-    # (the extra pair of braces around the return value is to prevent
-    # pandas from converting the time array to a series when apply gets only
-    # a single return value (i.e., when censors has only a single group))
-    if censors.ngroups > 1:
-        flatfun = lambda x: x[['start', 'stop']].values.ravel()
-    else:
-        flatfun = lambda x: [x[['start', 'stop']].values.ravel()]
-    censbins = censors.apply(flatfun)
-    
-    # append 0 and inf to bins
-    censbins = censbins.apply(lambda x: np.append([0], x))
-    censbins = censbins.apply(lambda x: np.append(x, np.inf))
-    # bin times in taxis; censored bins will have even indices
-    binnum = censbins.apply(lambda x: np.digitize(taxis, x))
-    binnum = binnum.apply(lambda x: x % 2 == 0)
-
-    excludes = pd.concat([pd.Series(b) for b in binnum], axis=1)
-    excludes.columns = binnum.index  # channel names
-    excludes.index = taxis
-    
-    return excludes
-   
-def censor_spikes(df, dbname, dtup):
-    excludes = get_censor(dbname, df.index, *dtup)
-    if not excludes.empty:
-        excludes = excludes[excludes.columns.intersection(
-            df.columns)]
-        excl_vec = np.any(excludes.values, axis=1)
-        newdf = df.copy()
-        newdf[excl_vec] = np.nan
-        return newdf
-    else:
-        return df
-
-def load_spikes(dbname, dtup):
-    spks = fetch(dbname, 'spikes', *dtup)
-
-    spkbin = binspikes(spks, 0.05)  # use 50 ms bins
-
-    return censor_spikes(spkbin, dbname, dtup)
 
 if __name__ == '__main__':
-
-    # get all spikes for a given unit 
-    # df = getSpikes(18, 1, 1, 1)
-    dbname = '/home/jmp33/data/bartc/plexdata/bartc.hdf5'
-    df = fetch(dbname, 'spikes', 18, 1, 1, 1)
-
-    binsize = 0.050  # 50 ms bin
-    binned = binspikes(df, binsize)
-
-    evt = fetch(dbname, 'events', 18, 1)['banked'].dropna()
-
-    psth = evtsplit(binned, evt, -1, 1).mean(axis=1)
-
-    smpsth = smooth(psth, 0.4)
-
-    df = fetch_all_such(dbname, 'spikes', 17, 2)
-
-    df = fetch(dbname, 'lfp', 18, 1, 17)
-    df = df.set_index('time')
+    pass

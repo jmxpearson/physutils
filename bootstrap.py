@@ -5,6 +5,7 @@ time-frequency data.
 
 import numpy as np
 import physutils.classes.unionfind as unionfind
+from scipy.signal import convolve2d
 
 def diff_t_stat(arraylist, labels):
     multarray = np.array(arraylist) # convert to array along dim 0
@@ -22,8 +23,16 @@ def tstats(a, b, axis=0, equal_var=True):
     if a.size == 0 or b.size == 0:
         return (np.nan, np.nan)
 
+    # we will use this kernel to smooth our variance estimate
+    smoother = np.array([[0, 1., 0], [1., 2., 1.], [0, 1., 0]])
+    smoother = smoother / np.sum(smoother)
+
     v1 = np.nanvar(a, axis, ddof=1)
     v2 = np.nanvar(b, axis, ddof=1)
+
+    v1 = convolve2d(np.nan_to_num(v1), smoother, mode='same')
+    v2 = convolve2d(np.nan_to_num(v2), smoother, mode='same')
+
     n1 = a.shape[axis]
     n2 = b.shape[axis]
 

@@ -144,7 +144,11 @@ def plot_time_frequency(spectrum, **kwargs):
     z = 10 * np.log10(spectrum.T)
     ax = plt.figure().add_subplot(111)
     extent = (times[0], times[-1], freqs[0], freqs[-1])
-    im = NonUniformImage(ax, interpolation='bilinear', extent=extent)
+    if 'interpolation' in kwargs:
+        interp = kwargs['interpolation']
+    else:
+        interp = 'bilinear'
+    im = NonUniformImage(ax, interpolation=interp, extent=extent)
     im.set_data(times, freqs, z)
     if 'clim' in kwargs:
         im.set_clim(kwargs['clim'])

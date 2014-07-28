@@ -230,7 +230,7 @@ class LFPset(object):
 
         if doplot:
             color_lims = (np.amin(10 * np.log10(contrast.values)), np.amax(10 * np.log10(contrast.values)))
-            fig = core.plot_time_frequency(mcontrast, clim=color_lims) 
+            fig = core.plot_time_frequency(mcontrast, clim=color_lims)
         else:
             fig = None
 

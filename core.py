@@ -58,7 +58,7 @@ def binspikes(df, dt):
         columns=['count'])
     return dframe
 
-def smooth(df, wid):
+def dfsmooth(df, wid):
     """
     performs smoothing by a window of width wid (in s); data in df
     reflect data at both ends to minimize edge effect
@@ -67,13 +67,20 @@ def smooth(df, wid):
     ts = df.index[1] - df.index[0]
     x = df.values.squeeze()
     wlen = np.round(wid/ts)
+    return pd.DataFrame(smooth(x, wlen), index=df.index, columns=[''])
+
+def smooth(x, wlen):
+    """
+    Performs smoothing on x via a hanning window of wlen samples
+    centered on x.
+    """
     ww = np.hanning(wlen)
     # grab first wlen samples, reverse them, append to front,
     # grab last wlen samples, reverse, append to end
     xx = np.r_[x[wlen-1:0:-1], x, x[-1:-wlen:-1]]
     y = np.convolve(ww/ww.sum(),xx, mode='valid')
-    y = y[(wlen/2 - 1):-wlen/2]
-    return pd.DataFrame(y, index=df.index, columns=[''])
+    return y[(wlen/2 - 1):-wlen/2]
+
 
 def spectrogram(series, winlen, frac_overlap):
     """

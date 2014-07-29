@@ -308,5 +308,34 @@ def dfbandlimit(df, filters=None):
 
     return allbands
 
+def rle(x):
+    """
+    Perform run length encoding on the numpy array x. Returns a tuple
+    of start indices, run lengths, and values for each run.
+    """
+    # add infinity to beginning to x[0] always starts a run
+    dx = np.diff(np.insert(x.flatten(), 0, np.inf))
+    starts = np.flatnonzero(dx)
+    # make sure stops always include last element
+    stops = np.append(starts[1:], np.size(x))
+    runlens = stops - starts
+    values = x[starts]
+    return starts, runlens, values
+
+def remove_short_runs(x, minlen, replace_val):
+    """
+    Given an array x, replace all runs shorter than minlen with the 
+    value in replace_val. Returns a copy.
+    """
+    starts, runlens, values = rle(x)
+    to_replace = runlens < minlen
+    stops = starts + runlens
+    rngs = zip(starts[to_replace], stops[to_replace])
+    newx = x.copy()
+    for rng in rngs:
+        newx[slice(*rng)] = replace_val
+    return newx
+
+
 if __name__ == '__main__':
     pass

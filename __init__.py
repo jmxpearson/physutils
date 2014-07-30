@@ -1,2 +1,2 @@
 from .core import *
-from .classes import lfpclasses
+from .classes.lfpclasses import * 

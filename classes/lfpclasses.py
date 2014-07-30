@@ -12,7 +12,7 @@ from scipy.signal import hilbert
 import pandas as pd
 
 class LFPset(object):
-    def __init__(self, data, meta=None):
+    def __init__(self, data, meta={}):
         # wrap passed data in constructor in case it's a series
         self.dataframe = pd.DataFrame(data)
         self.meta = meta  # dict of metadata 
@@ -73,32 +73,27 @@ class LFPset(object):
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 
-    def censor(self, excludes=None, get_censor=None):
+    def censor(self, maskarr=None, get_censor=None):
         """
-        Censor lfp, replacing with NaNs. Censoring specified either by:
-        1) excludes, a numpy array of start time, stop time pairs
+        Censor lfp, replacing with NaNs. Censoring has a default 
+        behavior of removing railing artifacts separately for each
+        column, but this behavior can be overridden by specifying either:
+        1) maskarr, a Boolean numpy array suitable to serve as a mask
+        for the data (i.e., True for censored values)
         2) get_censor, a function that is passed self and should 
-        return an excludes array
-        Option 1 overrides option 2
+        return a mask the same shape as self.values
+        Option 1 takes precedence over option 2
         """
-        if not excludes:
-            if get_censor:
-                excludes = get_censor(self)
-            else:
-                return self
 
-        if not excludes.empty:
-            excludes = excludes[excludes.columns.intersection(
-                self.dataframe.columns)]
-            # can do something fancy later, but for now, take logical OR across all
-            # channels to determine what we keep
-            excl_vec = np.any(excludes.values, axis=1)
-            newdf = self.dataframe
-            newdf[excl_vec] = np.nan
-            newmeta = self.meta.copy()
-            return LFPset(newdf, newmeta)
+        if maskarr:
+            m = maskarr
+        elif get_censor:
+            m = get_censor(self)
         else:
-            return self
+            m = np.apply_along_axis(core.censor_railing, axis=0, 
+                arr=self.dataframe.values)
+        
+        return LFPset(self.mask(m), self.meta.copy())
 
     def evtsplit(self, times, Tpre, Tpost, t0=0):
         # note: Tpre < 0 for times before the events in times

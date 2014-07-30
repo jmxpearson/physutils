@@ -13,6 +13,7 @@ Currently, `import physutils` imports all functions in `core` and the classes in
   * `lfpclasses` contains the `LFPset` class, which is a thin wrapper around a Pandas dataframe (dataframe + metadata) with methods for decimation, filtering, time-frequency analysis, and significance testing.
   * `unionfind` is an implementation of the union-find data structure used by the cluster-finding algorithm in `bootstrap`.
 * `bootstrap` contains functions to implement a permutation significance test for differences between time-frequency plots for pairs of conditions.
+* `examples` contains iPython notebooks illustrating typical use cases of the classes and functions in the package.
 
 ### Dependencies:
 * Numpy

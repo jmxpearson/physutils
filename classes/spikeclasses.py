@@ -10,10 +10,6 @@ import warnings
 class Spikeset(pd.DataFrame):
     # because we're inheriting directly from DataFrame, we don't need __init__
     
-    @classmethod
-    def from_csv(cls, fname):
-        return Spikeset(super(Spikeset, cls).from_csv(fname))
-    
     def bin(self, dt, timecolumn='time'):
         # if self is a frame of spike times, return a histogrammed set of spike
         # counts in each time bin

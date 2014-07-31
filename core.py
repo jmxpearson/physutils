@@ -45,15 +45,15 @@ def dfdecimate(df, decfrac):
         newdf.index.name = df.index.name
     return newdf
 
-def binspikes(df, dt):
+def binspikes(df, dt, col='time'):
     """
     Convert df, a Pandas dataframe of spike timestamps, to a binned
     histogram with bin width dt.
     """
-    maxT = np.max(df['time'])
+    maxT = np.max(df[col])
     maxbin = np.ceil(maxT / dt)
     binT = np.arange(0, maxbin * dt, dt)
-    binned = np.histogram(df['time'], binT)[0]
+    binned = np.histogram(df[col], binT)[0]
     dframe = pd.DataFrame(binned, index=pd.Index(binT[:-1], name='time'),
         columns=['count'])
     return dframe

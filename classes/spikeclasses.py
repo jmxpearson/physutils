@@ -34,6 +34,15 @@ class SpikeSet(pd.DataFrame):
 
         return SpikeSet(binned)
 
+    def rebin(self, nbins):
+        """
+        Re-histograms an already binned SpikeSet, combining nbins together
+        into one.
+        """
+        N = int(nbins)
+        return SpikeSet(pd.stats.moments.rolling_sum(self, N).iloc[N::N])
+
+
     def evtsplit(self, events, Tpre, Tpost, t0=0.0, dt=0.001, 
         timecolumn='time'):
         # split frame into chunks (Tpre, Tpost) around each event in events

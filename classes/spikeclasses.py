@@ -8,9 +8,17 @@ import numpy as np
 import pandas as pd
 import warnings
 
-class Spikeset(pd.DataFrame):
-    # because we're inheriting directly from DataFrame, we don't need __init__
-    
+class SpikeSet(pd.DataFrame):
+    def __init__(self, *args, **kwargs):
+        super(SpikeSet, self).__init__(*args, **kwargs)
+        if 'timecolumn' in kwargs:
+            self.set_index(kwargs['timecolumn'])
+
+    @classmethod
+    def from_timestamps(cls, df, dt=0.001, timecolumn='time'):
+        ts = SpikeSet(df)
+        return ts.bin(dt, timecolumn) 
+
     def bin(self, dt, timecolumn='time'):
         # if self is a frame of spike times, return a histogrammed set of spike
         # counts in each time bin
@@ -24,9 +32,9 @@ class Spikeset(pd.DataFrame):
         # drop counts label that clutters MultiIndex
         binned.columns = binned.columns.droplevel(0)
 
-        return Spikeset(binned)
+        return SpikeSet(binned)
 
-    def evtsplit(self, events, Tpre, Tpost, t0=0.0, dt=0.005, 
+    def evtsplit(self, events, Tpre, Tpost, t0=0.0, dt=0.001, 
         timecolumn='time'):
         # split frame into chunks (Tpre, Tpost) around each event in events
         # Tpre should be < 0 for times before event
@@ -40,19 +48,19 @@ class Spikeset(pd.DataFrame):
 
         chunklist = []
         for col in binned.columns.values:
-            chunklist.append(Spikeset(core.evtsplit(binned[col], events, 
+            chunklist.append(SpikeSet(core.evtsplit(binned[col], events, 
                 Tpre, Tpost, t0)))
         idx = binned.columns
 
         return chunklist, idx
 
-    def psth(self, events, Tpre, Tpost, t0=0.0, rate=True, dt=0.005, timecolumn='time'):
+    def psth(self, events, Tpre, Tpost, t0=0.0, rate=True, dt=0.001, timecolumn='time'):
         """
         Construct a peri-stimulus time histogram of the data in self in
         an interval (Tpre, Tpost) relative to each event in events. Tpre
         should be negative for times preceding events. Accepts either
         a dataframe of timestamps or a dataframe of binned counts. Returns
-        a Spikeset, one column per unique combination of columns in self
+        a dataframe, one column per unique combination of columns in self
         (excluding timestamps) in the case of timestamp input or one 
         column per column in the case of binned input. If rate=True, 
         returns the mean spike rate across events. If rate is false, returns
@@ -72,7 +80,7 @@ class Spikeset(pd.DataFrame):
             outframe = pd.concat([ck.sum(axis=1) for ck in chunks], axis=1)
 
         outframe.columns = colnames
-        return Spikeset(outframe)
+        return outframe
 
     def smooth(self, window):
         """
@@ -83,7 +91,7 @@ class Spikeset(pd.DataFrame):
         dt = self.index[1] - self.index[0]
         winlen = np.floor(window / dt)
 
-        return Spikeset(pd.stats.moments.rolling_mean(self, winlen, 
+        return SpikeSet(pd.stats.moments.rolling_mean(self, winlen, 
             min_periods=0))
 
 

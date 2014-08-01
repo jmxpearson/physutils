@@ -26,7 +26,7 @@ class Spikeset(pd.DataFrame):
 
         return Spikeset(binned)
 
-    def evtsplit(self, events, Tpre, Tpost, t0=0.0, dt=0.05, 
+    def evtsplit(self, events, Tpre, Tpost, t0=0.0, dt=0.005, 
         timecolumn='time'):
         # split frame into chunks (Tpre, Tpost) around each event in events
         # Tpre should be < 0 for times before event
@@ -42,5 +42,49 @@ class Spikeset(pd.DataFrame):
         for col in binned.columns.values:
             chunklist.append(Spikeset(core.evtsplit(binned[col], events, 
                 Tpre, Tpost, t0)))
+        idx = binned.columns
 
-        return chunklist
+        return chunklist, idx
+
+    def psth(self, events, Tpre, Tpost, t0=0.0, rate=True, dt=0.005, timecolumn='time'):
+        """
+        Construct a peri-stimulus time histogram of the data in self in
+        an interval (Tpre, Tpost) relative to each event in events. Tpre
+        should be negative for times preceding events. Accepts either
+        a dataframe of timestamps or a dataframe of binned counts. Returns
+        a Spikeset, one column per unique combination of columns in self
+        (excluding timestamps) in the case of timestamp input or one 
+        column per column in the case of binned input. If rate=True, 
+        returns the mean spike rate across events. If rate is false, returns
+        raw counts in each time bin.
+        """
+
+        # if already binned, override dt
+        if self.index.name == 'time':
+            dt = self.index[1] - self.index[0]
+
+        chunks, colnames = self.evtsplit(events, Tpre, Tpost, t0, dt, timecolumn)
+
+        if rate:
+            means = pd.concat([ck.mean(axis=1) for ck in chunks], axis=1)
+            outframe = means / dt
+        else:
+            outframe = pd.concat([ck.sum(axis=1) for ck in chunks], axis=1)
+
+        outframe.columns = colnames
+        return Spikeset(outframe)
+
+    def smooth(self, window):
+        """
+        *Causal* boxcar smooth of the data in dataframe. window is the length
+        of the smoothing window (in seconds).
+        """
+
+        dt = self.index[1] - self.index[0]
+        winlen = np.floor(window / dt)
+
+        return Spikeset(pd.stats.moments.rolling_mean(self, winlen, 
+            min_periods=0))
+
+
+

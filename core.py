@@ -238,7 +238,7 @@ def per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs
     freqs = spectra[0].columns
     return (specmats, times, freqs)
 
-def evtsplit(df, ts, Tpre, Tpost, t0=0):
+def evtsplit(df, ts, Tpre, Tpost, t0=0.0):
     """
     Split time series data into peri-event chunks. Data are in df.
     Times of events around which to split are in ts. 

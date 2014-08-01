@@ -89,8 +89,9 @@ class SpikeSet(pd.DataFrame):
             outframe = pd.concat([ck.sum(axis=1) for ck in chunks], axis=1)
 
         outframe.columns = colnames
-        return outframe
+        return PSTH(outframe)
 
+class PSTH(pd.DataFrame):
     def smooth(self, window):
         """
         *Causal* boxcar smooth of the data in dataframe. window is the length
@@ -102,6 +103,5 @@ class SpikeSet(pd.DataFrame):
 
         return SpikeSet(pd.stats.moments.rolling_mean(self, winlen, 
             min_periods=0))
-
 
 

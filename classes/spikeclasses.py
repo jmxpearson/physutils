@@ -20,5 +20,8 @@ class Spikeset(pd.DataFrame):
         binned = grp.apply(lambda x: core.binspikes(x, dt))
         binned = binned.unstack(level=id_keys)
 
+        # drop counts label that clutters MultiIndex
+        binned.columns = binned.columns.droplevel(0)
+
         return Spikeset(binned)
 

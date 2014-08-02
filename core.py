@@ -65,7 +65,7 @@ def binspikes(df, dt, timecolumn='time'):
     id_keys = list(set(df.columns).difference({timecolumn}))
 
     grp = df.groupby(id_keys)
-    binned = grp.apply(lambda x: core.binspikes(x, dt))
+    binned = grp.apply(lambda x: _binseries(x, dt, timecolumn))
     binned = binned.unstack(level=id_keys)
 
     # drop counts label that clutters MultiIndex

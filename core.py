@@ -45,7 +45,7 @@ def dfdecimate(df, decfrac):
         newdf.index.name = df.index.name
     return newdf
 
-def binspikes(df, dt, col='time'):
+def _binseries(df, dt, col='time'):
     """
     Convert df, a Pandas dataframe of spike timestamps, to a binned
     histogram with bin width dt.
@@ -57,6 +57,21 @@ def binspikes(df, dt, col='time'):
     dframe = pd.DataFrame(binned, index=pd.Index(binT[:-1], name='time'),
         columns=['count'])
     return dframe
+
+def binspikes(self, dt, timecolumn='time'):
+    # if self is a frame of spike times, return a histogrammed set of spike
+    # counts in each time bin
+
+    id_keys = list(set(self.columns).difference({timecolumn}))
+
+    grp = self.groupby(id_keys)
+    binned = grp.apply(lambda x: core.binspikes(x, dt))
+    binned = binned.unstack(level=id_keys)
+
+    # drop counts label that clutters MultiIndex
+    binned.columns = binned.columns.droplevel(0)
+
+    return binned
 
 def dfsmooth(df, wid):
     """

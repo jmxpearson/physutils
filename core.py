@@ -73,18 +73,17 @@ def binspikes(df, dt, timecolumn='time'):
 
     return binned
 
-def dfsmooth(df, wid):
+def smooth(df, wid):
     """
-    performs smoothing by a window of width wid (in s); data in df
-    reflect data at both ends to minimize edge effect
-    smooths using a centered window, which is non-causal
+    *Causal* boxcar smooth of the data in dataframe. window is the length
+    of the smoothing window (in seconds).
     """
-    ts = df.index[1] - df.index[0]
-    x = df.values.squeeze()
-    wlen = np.round(wid/ts)
-    return pd.DataFrame(smooth(x, wlen), index=df.index, columns=[''])
 
-def smooth(x, wlen):
+    ts = df.index[1] - df.index[0]
+    wlen = np.round(wid/ts)
+    return pd.rolling_mean(df, wlen, min_periods=1)
+
+def _hansmooth(x, wlen):
     """
     Performs smoothing on x via a hanning window of wlen samples
     centered on x.
@@ -399,7 +398,7 @@ def censor_railing(x, thresh=4, toler=1e-2, minlen=10, smooth_wid=300):
         np.abs(xx) > thresh * sig)
 
     min_removed = remove_short_runs(is_artifact, minlen, replace_val=False)
-    return smooth(min_removed, smooth_wid).astype('bool')
+    return _hansmooth(min_removed, smooth_wid).astype('bool')
 
 
 def psth(df, events, Tpre, Tpost, t0=0.0, rate=True, dt=0.001, timecolumn='time'):

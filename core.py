@@ -58,13 +58,13 @@ def _binseries(df, dt, col='time'):
         columns=['count'])
     return dframe
 
-def binspikes(self, dt, timecolumn='time'):
-    # if self is a frame of spike times, return a histogrammed set of spike
+def binspikes(df, dt, timecolumn='time'):
+    # if df is a frame of spike times, return a histogrammed set of spike
     # counts in each time bin
 
-    id_keys = list(set(self.columns).difference({timecolumn}))
+    id_keys = list(set(df.columns).difference({timecolumn}))
 
-    grp = self.groupby(id_keys)
+    grp = df.groupby(id_keys)
     binned = grp.apply(lambda x: core.binspikes(x, dt))
     binned = binned.unstack(level=id_keys)
 
@@ -244,7 +244,7 @@ def per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs
     and return a tuple containing the list of time-frequency matrices
     (time x frequency), an array of times, and an array of frequencies.
     """
-    df = evtsplit(series, events, Tpre, Tpost)
+    df = _splitseries(series, events, Tpre, Tpost)
     spectra = [tffun(ser, *args, **kwargs) for (name, ser) in df.iteritems()]
     if 'normfun' in kwargs:
         spectra = kwargs['normfun'](spectra)
@@ -253,7 +253,7 @@ def per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs
     freqs = spectra[0].columns
     return (specmats, times, freqs)
 
-def evtsplit(df, ts, Tpre, Tpost, t0=0.0):
+def _splitseries(df, ts, Tpre, Tpost, t0=0.0):
     """
     Split time series data into peri-event chunks. Data are in df.
     Times of events around which to split are in ts. 
@@ -281,6 +281,24 @@ def evtsplit(df, ts, Tpre, Tpost, t0=0.0):
     alltrials.index.name = 'time'
     alltrials.columns = pd.Index(np.arange(nevt), name='trial')
     return alltrials
+
+def evtsplit(df, events, Tpre, Tpost, t0=0.0, dt=0.001, timecolumn='time'):
+    # split frame into chunks (Tpre, Tpost) around each event in events
+    # Tpre should be < 0 for times before event
+    # if multiple series are passed, return a list of dataframes
+
+    # first, check if df is binned; if not, do so
+    if not df.index.name == 'time':
+        binned = binspikes(df, dt, timecolumn)
+    else:
+        binned = df
+
+    chunklist = []
+    for col in binned.columns.values:
+        chunklist.append(_splitseries(binned[col], events, Tpre, Tpost, t0))
+    idx = binned.columns
+
+    return chunklist, idx
 
 def bandlimit(df, band=(0.01, 120)):
     """
@@ -384,6 +402,33 @@ def censor_railing(x, thresh=4, toler=1e-2, minlen=10, smooth_wid=300):
     return smooth(min_removed, smooth_wid).astype('bool')
 
 
+def psth(df, events, Tpre, Tpost, t0=0.0, rate=True, dt=0.001, timecolumn='time'):
+    """
+    Construct a peri-stimulus time histogram of the data in df in
+    an interval (Tpre, Tpost) relative to each event in events. Tpre
+    should be negative for times preceding events. Accepts either
+    a dataframe of timestamps or a dataframe of binned counts. Returns
+    a dataframe, one column per unique combination of columns in df
+    (excluding timestamps) in the case of timestamp input or one 
+    column per column in the case of binned input. If rate=True, 
+    returns the mean spike rate across events. If rate is false, returns
+    raw counts in each time bin.
+    """
+
+    # if already binned, override dt
+    if df.index.name == 'time':
+        dt = df.index[1] - df.index[0]
+
+    chunks, colnames = evtsplit(df, events, Tpre, Tpost, t0, dt, timecolumn)
+
+    if rate:
+        means = pd.concat([ck.mean(axis=1) for ck in chunks], axis=1)
+        outframe = means / dt
+    else:
+        outframe = pd.concat([ck.sum(axis=1) for ck in chunks], axis=1)
+
+    outframe.columns = colnames
+    return outframe
 
 
 if __name__ == '__main__':

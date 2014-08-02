@@ -97,7 +97,7 @@ class LFPset(object):
 
     def evtsplit(self, times, Tpre, Tpost, t0=0):
         # note: Tpre < 0 for times before the events in times
-        split_to_series = lambda x: core.evtsplit(x, times, Tpre, Tpost, 
+        split_to_series = lambda x: core._splitseries(x, times, Tpre, Tpost, 
             t0).unstack()
         return self.dataframe.apply(split_to_series)
 

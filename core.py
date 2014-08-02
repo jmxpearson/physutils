@@ -6,7 +6,7 @@ from matplotlib.image import NonUniformImage
 import matplotlib.pyplot as plt
 import warnings
 
-def decimate(x, decfrac, axis=-1):
+def _arrdecimate(x, decfrac, axis=-1):
     """
     just like in the scipy source code, except I use filtfilt
     and opt for hardcode defaults
@@ -25,7 +25,7 @@ def decimate(x, decfrac, axis=-1):
     sl[axis] = slice(None, None, decfrac)
     return y[sl]
 
-def dfdecimate(df, decfrac):
+def decimate(df, decfrac):
     """
     Decimate a dataframe, handling indices and columns appropriately.
     decfrac can be an iterable of successive decimations
@@ -38,7 +38,7 @@ def dfdecimate(df, decfrac):
 
     for frac in decfrac:
         tindex = newdf.index[::frac]
-        parts = [pd.DataFrame(decimate(aa[1], frac), columns=[aa[0]]) 
+        parts = [pd.DataFrame(_arrdecimate(aa[1], frac), columns=[aa[0]]) 
         for aa in newdf.iteritems()]
         newdf = pd.concat(parts, axis=1)
         newdf.index = tindex

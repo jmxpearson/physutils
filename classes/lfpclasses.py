@@ -27,7 +27,7 @@ class LFPset(object):
         return 'LFP dataset object containing a\n' + self.dataframe.__repr__()
 
     def decimate(self, decfrac):
-        newdf = core.dfdecimate(self.dataframe, decfrac)
+        newdf = core.decimate(self.dataframe, decfrac)
         newmeta = self.meta.copy()
         newmeta['sr'] = newmeta.get('sr', None) / np.product(decfrac)
         return LFPset(newdf, newmeta)

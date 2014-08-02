@@ -286,7 +286,7 @@ def evtsplit(df, events, Tpre, Tpost, t0=0.0, dt=0.001, timecolumn='time'):
 
     return chunklist, idx
 
-def bandlimit(df, band=(0.01, 120)):
+def _bandlimit_series(df, band=(0.01, 120)):
     """
     Computes bandpass-filtered version of time series in df.
     Band is either a two-element indexed sequence or a conventionally
@@ -316,7 +316,7 @@ def dfbandlimit(df, filters=None):
 
     df = pd.DataFrame(df)
     nchan = df.shape[1]
-    bands = [bandlimit(df, f) for f in filters]
+    bands = [_bandlimit_series(df, f) for f in filters]
     allbands = pd.concat(bands, axis=1)
     
     # attend to labeling

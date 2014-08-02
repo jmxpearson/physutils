@@ -33,7 +33,7 @@ class LFPset(object):
         return LFPset(newdf, newmeta)
 
     def bandlimit(self, *args):
-        newdf = core.dfbandlimit(self.dataframe, *args)
+        newdf = core.bandlimit(self.dataframe, *args)
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 

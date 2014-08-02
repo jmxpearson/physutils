@@ -7,6 +7,8 @@ As per Pandas convention, these should return new dataframes.
 """
 from .. import core
 from .. import bootstrap as boot
+from .. import tf
+from .. import cleaning
 import numpy as np
 from scipy.signal import hilbert
 import pandas as pd
@@ -90,7 +92,7 @@ class LFPset(object):
         elif get_censor:
             m = get_censor(self)
         else:
-            m = np.apply_along_axis(core.censor_railing, axis=0, 
+            m = np.apply_along_axis(cleaning.censor_railing, axis=0, 
                 arr=self.dataframe.values)
         
         return LFPset(self.mask(m), self.meta.copy())
@@ -110,15 +112,15 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = core.continuous_wavelet
+            callback = tf.continuous_wavelet
         else:
-            callback = core.spectrogram
+            callback = tf.spectrogram
 
-        tf = core.avg_time_frequency(series, callback, times, Tpre, 
+        tf = tf.avg_time_frequency(series, callback, times, Tpre, 
             Tpost, **kwargs)
 
         if doplot:
-            fig = core.plot_time_frequency(tf)
+            fig = tf.plot_time_frequency(tf)
         else:
             fig = None
 
@@ -135,17 +137,17 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = core.continuous_wavelet
+            callback = tf.continuous_wavelet
         else:
-            callback = core.spectrogram
+            callback = tf.spectrogram
 
-        tf0 = core.avg_time_frequency(series, callback, times[0], Tpre, 
+        tf0 = tf.avg_time_frequency(series, callback, times[0], Tpre, 
             Tpost, **kwargs)
-        tf1 = core.avg_time_frequency(series, callback, times[1], Tpre, 
+        tf1 = tf.avg_time_frequency(series, callback, times[1], Tpre, 
             Tpost, **kwargs)
 
         if doplot:
-            fig = core.plot_time_frequency(tf0 / tf1) 
+            fig = tf.plot_time_frequency(tf0 / tf1) 
         else:
             fig = None
 
@@ -165,9 +167,9 @@ class LFPset(object):
         """
         series = self.dataframe[channel]
         if method == 'wav':
-            callback = core.continuous_wavelet
+            callback = tf.continuous_wavelet
         else:
-            callback = core.spectrogram
+            callback = tf.spectrogram
 
         # make a dataframe containing all times, labeled by event type
         t0 = pd.DataFrame({'time': times[0], 'label': 0})
@@ -175,7 +177,7 @@ class LFPset(object):
         alltimes = pd.concat([t0, t1])
 
         # get time-frequency matrix for each event
-        spectra, taxis, faxis = core.per_event_time_frequency(series,
+        spectra, taxis, faxis = tf._per_event_time_frequency(series,
             callback, alltimes['time'], Tpre, Tpost, **kwargs)
 
         try: 
@@ -216,8 +218,8 @@ class LFPset(object):
             hi=thhi, keeplo=Clo, keephi=Chi)
 
         # make contrast image
-        img0 = core.mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
-        img1 = core.mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
+        img0 = tf._mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
+        img1 = tf._mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
         contrast = img0 / img1
 
         # use mask from statistic map to mask original data
@@ -225,7 +227,7 @@ class LFPset(object):
 
         if doplot:
             color_lims = (np.amin(10 * np.log10(contrast.values)), np.amax(10 * np.log10(contrast.values)))
-            fig = core.plot_time_frequency(mcontrast, clim=color_lims)
+            fig = tf.plot_time_frequency(mcontrast, clim=color_lims)
         else:
             fig = None
 

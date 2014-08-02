@@ -1,9 +1,6 @@
 import numpy as np
 import pandas as pd
 import scipy.signal as ssig
-from matplotlib.mlab import specgram
-from matplotlib.image import NonUniformImage
-import matplotlib.pyplot as plt
 import warnings
 
 def _arrdecimate(x, decfrac, axis=-1):
@@ -83,114 +80,6 @@ def smooth(df, wid):
     wlen = np.round(wid/ts)
     return pd.rolling_mean(df, wlen, min_periods=1)
 
-def spectrogram(series, winlen, frac_overlap):
-    """
-    Given a Pandas series, a window length (in s), and a percent 
-    overlap between successive windows, calculate the spectrogram
-    based on the moving window stft.
-    Returns a DataFrame with frequencies in columns and time in rows
-    Uses matplotlib.mlab.specgram
-    """
-    dt = series.index[1] - series.index[0]
-    sr = 1. / dt
-    Nwin = int(np.ceil(winlen / dt))
-    Npad = int(2 ** np.ceil(np.log2(Nwin)))  # next closest power of 2 to pad to
-    Noverlap = min(int(np.ceil(frac_overlap * Nwin)), Nwin - 1)
-
-    spec = specgram(series.values, NFFT=Nwin, Fs=sr, noverlap=Noverlap, 
-        pad_to=Npad)
-    return pd.DataFrame(spec[0].T, columns=spec[1], index=spec[2] + series.index[0])
-
-def continuous_wavelet(series, freqs=None, *args, **kwargs):
-    """
-    Construct a continuous wavelet transform for the data series.
-    Extra pars are parameters for the Morlet wavelet.
-    Returns a tuple (time-frequency matrix, frequencies, times)
-    """
-    if not freqs:
-        # define some default LFP frequencies of interest
-        freqlist = [np.arange(1, 13), np.arange(15, 30, 3), np.arange(35, 100, 5)]
-        freqs = np.concatenate(freqlist)
-
-    dt = series.index[1] - series.index[0]
-    scales = 1. / (freqs * dt)  # widths need to be in samples, not seconds
-    if 'w' in kwargs:
-        wav = _make_morlet(kwargs['w'])
-    else:
-        wav = _make_morlet(*args)
-    rwavelet = lambda N, b: np.real(wav(N, b))
-    iwavelet = lambda N, b: np.imag(wav(N, b))
-    tfr = ssig.cwt(series.values, rwavelet, scales)
-    tfi = ssig.cwt(series.values, iwavelet, scales)
-    tf = tfr ** 2 + tfi ** 2
-
-    return pd.DataFrame(tf.T, columns=freqs, index=series.index)
-
-def _make_morlet(w=np.sqrt(2) * np.pi):
-    """
-    Coded to conform to the requirements of scipy.signal.cwt.
-    WARNING: scipy.signal.morlet does not follow the recommended convention!
-    Default value of w corresponds (up to a rescaling) to the 1-1 
-    complex Morlet wavelet in Matlab.
-    """
-    def wav(N, b):
-        x = (np.arange(0, N) - (N - 1.0) / 2) / b
-        output = np.exp(1j * w * x) - np.exp(-0.5 * (w ** 2))
-        output *= np.exp(-0.5 * (x ** 2)) * (np.pi ** (-0.25))
-        output /= np.sqrt(b)
-        return output
-
-    return wav
-
-def plot_time_frequency(spectrum, **kwargs):
-    """
-    Time-frequency plot. Modeled after image_nonuniform.py example 
-    spectrum is a dataframe with frequencies in columns and time in rows
-    """
-    times = spectrum.index
-    freqs = spectrum.columns
-    z = 10 * np.log10(spectrum.T)
-    ax = plt.figure().add_subplot(111)
-    extent = (times[0], times[-1], freqs[0], freqs[-1])
-    if 'interpolation' in kwargs:
-        interp = kwargs['interpolation']
-    else:
-        interp = 'bilinear'
-    im = NonUniformImage(ax, interpolation=interp, extent=extent)
-    im.set_data(times, freqs, z)
-    if 'clim' in kwargs:
-        im.set_clim(kwargs['clim'])
-    ax.set_xlim(extent[0], extent[1])
-    ax.set_ylim(extent[2], extent[3])
-    ax.images.append(im)
-    plt.colorbar(im, label='Power (dB/Hz)')
-    plt.xlabel('Time (s)')
-    plt.ylabel('Frequency (Hz)')
-    return plt.gcf() 
-
-def avg_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs):
-    """
-    Given a Pandas series, split it into chunks of (Tpre, Tpost) around
-    events, do the time-frequency on each using the function tffun,
-    and return a DataFrame with time as the index and frequency as the 
-    column label.
-    Note that, as per evtsplit, events before the events have Tpre < 0.
-    *args and **kwargs are passed on to tffun
-    """
-    specmats, times, freqs = per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs)
-    
-    return mean_from_events(specmats, times, freqs)
-
-def mean_from_events(specmats, times, freqs):
-    """
-    Given a list containing time-frequency spectra, average them and
-    return a dataframe (time x frequency).
-    """
-    allspecs = np.dstack(specmats)
-    meanspec = np.nanmean(allspecs, axis=2)
-
-    return pd.DataFrame(meanspec, index=times, columns=freqs)
-
 def norm_by_trial(timetuple):
     """
     Given a list (one per trial) of dataframes, return a function that
@@ -222,22 +111,6 @@ def norm_by_mean(timetuple):
         return map(lambda x: x.div(mean_baseline), framelist)
 
     return normalize
-
-def per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs):
-    """
-    Given a Pandas series, split it into chunks of (Tpre, Tpost) around
-    events, do the time-frequency on each using the function tffun,
-    and return a tuple containing the list of time-frequency matrices
-    (time x frequency), an array of times, and an array of frequencies.
-    """
-    df = _splitseries(series, events, Tpre, Tpost)
-    spectra = [tffun(ser, *args, **kwargs) for (name, ser) in df.iteritems()]
-    if 'normfun' in kwargs:
-        spectra = kwargs['normfun'](spectra)
-    specmats = map(lambda x: x.values, spectra)
-    times = spectra[0].index
-    freqs = spectra[0].columns
-    return (specmats, times, freqs)
 
 def _splitseries(df, ts, Tpre, Tpost, t0=0.0):
     """
@@ -306,7 +179,7 @@ def _bandlimit_series(df, band=(0.01, 120)):
         ftype='ellip')
     return df.apply(lambda x: ssig.filtfilt(b, a, x), raw=True)
 
-def dfbandlimit(df, filters=None):
+def bandlimit(df, filters=None):
     """
     Convenience function for bandlimiting data frames. Handles
     indices and columns appropriately.
@@ -326,79 +199,6 @@ def dfbandlimit(df, filters=None):
     allbands.columns = bandnames
 
     return allbands
-
-def rle(x):
-    """
-    Perform run length encoding on the numpy array x. Returns a tuple
-    of start indices, run lengths, and values for each run.
-    """
-    # add infinity to beginning to x[0] always starts a run
-    dx = np.diff(np.insert(x.flatten(), 0, np.inf))
-    starts = np.flatnonzero(dx)
-    # make sure stops always include last element
-    stops = np.append(starts[1:], np.size(x))
-    runlens = stops - starts
-    values = x[starts]
-    return starts, runlens, values
-
-def remove_short_runs(x, minlen, replace_val):
-    """
-    Given an array x, replace all runs shorter than minlen with the 
-    value in replace_val. Returns a copy.
-    """
-    starts, runlens, values = rle(x)
-    to_replace = runlens < minlen
-    stops = starts + runlens
-    rngs = zip(starts[to_replace], stops[to_replace])
-    newx = x.copy()
-    for rng in rngs:
-        newx[slice(*rng)] = replace_val
-    return newx
-
-def _hansmooth(x, wlen):
-    """
-    Performs smoothing on x via a hanning window of wlen samples
-    centered on x.
-    """
-    ww = np.hanning(wlen)
-    # grab first wlen samples, reverse them, append to front,
-    # grab last wlen samples, reverse, append to end
-    xx = np.r_[x[wlen-1:0:-1], x, x[-1:-wlen:-1]]
-    y = np.convolve(ww/ww.sum(),xx, mode='valid')
-    return y[(wlen/2 - 1):-wlen/2]
-
-def censor_railing(x, thresh=4, toler=1e-2, minlen=10, smooth_wid=300):
-    """
-    Given a numpy array x, censor the dataset by detecting and removing 
-    artifacts due to railing signal, returning a boolean 
-    array with the same shape as a flattened x, suitable for 
-    masking (i.e., True for censored data).
-
-    Censoring happens as follows:
-    * Mark all data exceeding a threshold of thresh * sig, where sig
-    is an estimate of the standard deviation of the data based on the median.
-    * Mark all points at which the derivative of the data is less than 
-    a tolerance toler * sig.
-    * Take the intersection of these sets. Remove any sets of consecutive 
-    points smaller than minlen as putative false positives.
-    * Expand the censoring region by smearing with a kernel of size 
-    smooth_wid.
-    """
-
-    # first off, flatten and de-mean
-    xx = x.ravel() - np.mean(x)
-
-    sig = np.median(abs(xx)) / 0.67449  # median(abs(xx)) / Phi^{-1}(0.75)
-
-    dx = np.diff(xx)
-    dx = np.insert(dx, 0, np.inf)  # make same length as xx
-
-    is_artifact = np.logical_and(np.abs(dx) < toler * sig, 
-        np.abs(xx) > thresh * sig)
-
-    min_removed = remove_short_runs(is_artifact, minlen, replace_val=False)
-    return _hansmooth(min_removed, smooth_wid).astype('bool')
-
 
 def psth(df, events, Tpre, Tpost, t0=0.0, rate=True, dt=0.001, timecolumn='time'):
     """

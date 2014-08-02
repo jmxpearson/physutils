@@ -3,6 +3,8 @@ import pandas as pd
 from matplotlib.mlab import specgram
 from matplotlib.image import NonUniformImage
 import matplotlib.pyplot as plt
+import scipy.signal as ssig
+from . import core
 
 def spectrogram(series, winlen, frac_overlap):
     """
@@ -119,7 +121,7 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwarg
     and return a tuple containing the list of time-frequency matrices
     (time x frequency), an array of times, and an array of frequencies.
     """
-    df = _splitseries(series, events, Tpre, Tpost)
+    df = core._splitseries(series, events, Tpre, Tpost)
     spectra = [tffun(ser, *args, **kwargs) for (name, ser) in df.iteritems()]
     if 'normfun' in kwargs:
         spectra = kwargs['normfun'](spectra)

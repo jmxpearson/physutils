@@ -116,15 +116,15 @@ class LFPset(object):
         else:
             callback = tf.spectrogram
 
-        tf = tf.avg_time_frequency(series, callback, times, Tpre, 
+        avgtf = tf.avg_time_frequency(series, callback, times, Tpre, 
             Tpost, **kwargs)
 
         if doplot:
-            fig = tf.plot_time_frequency(tf)
+            fig = tf.plot_time_frequency(avgtf)
         else:
             fig = None
 
-        return tf, fig
+        return avgtf, fig
 
     def contrast_time_frequency(self, channel, times, Tpre, Tpost, method='wav', doplot=True, **kwargs):
         """

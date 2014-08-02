@@ -83,19 +83,6 @@ def smooth(df, wid):
     wlen = np.round(wid/ts)
     return pd.rolling_mean(df, wlen, min_periods=1)
 
-def _hansmooth(x, wlen):
-    """
-    Performs smoothing on x via a hanning window of wlen samples
-    centered on x.
-    """
-    ww = np.hanning(wlen)
-    # grab first wlen samples, reverse them, append to front,
-    # grab last wlen samples, reverse, append to end
-    xx = np.r_[x[wlen-1:0:-1], x, x[-1:-wlen:-1]]
-    y = np.convolve(ww/ww.sum(),xx, mode='valid')
-    return y[(wlen/2 - 1):-wlen/2]
-
-
 def spectrogram(series, winlen, frac_overlap):
     """
     Given a Pandas series, a window length (in s), and a percent 
@@ -128,9 +115,9 @@ def continuous_wavelet(series, freqs=None, *args, **kwargs):
     dt = series.index[1] - series.index[0]
     scales = 1. / (freqs * dt)  # widths need to be in samples, not seconds
     if 'w' in kwargs:
-        wav = make_morlet(kwargs['w'])
+        wav = _make_morlet(kwargs['w'])
     else:
-        wav = make_morlet(*args)
+        wav = _make_morlet(*args)
     rwavelet = lambda N, b: np.real(wav(N, b))
     iwavelet = lambda N, b: np.imag(wav(N, b))
     tfr = ssig.cwt(series.values, rwavelet, scales)
@@ -139,7 +126,7 @@ def continuous_wavelet(series, freqs=None, *args, **kwargs):
 
     return pd.DataFrame(tf.T, columns=freqs, index=series.index)
 
-def make_morlet(w=np.sqrt(2) * np.pi):
+def _make_morlet(w=np.sqrt(2) * np.pi):
     """
     Coded to conform to the requirements of scipy.signal.cwt.
     WARNING: scipy.signal.morlet does not follow the recommended convention!
@@ -367,6 +354,18 @@ def remove_short_runs(x, minlen, replace_val):
     for rng in rngs:
         newx[slice(*rng)] = replace_val
     return newx
+
+def _hansmooth(x, wlen):
+    """
+    Performs smoothing on x via a hanning window of wlen samples
+    centered on x.
+    """
+    ww = np.hanning(wlen)
+    # grab first wlen samples, reverse them, append to front,
+    # grab last wlen samples, reverse, append to end
+    xx = np.r_[x[wlen-1:0:-1], x, x[-1:-wlen:-1]]
+    y = np.convolve(ww/ww.sum(),xx, mode='valid')
+    return y[(wlen/2 - 1):-wlen/2]
 
 def censor_railing(x, thresh=4, toler=1e-2, minlen=10, smooth_wid=300):
     """

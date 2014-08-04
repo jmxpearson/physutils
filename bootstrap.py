@@ -186,5 +186,5 @@ def get_cluster_masses(arr, indices):
     """
     # get counts of each index, weighted by arr
     counts = np.bincount(indices.ravel(), arr.ravel())
-    counts = counts[1:]  # get rid of "cluster" labeled 0
+    counts = counts
     return counts

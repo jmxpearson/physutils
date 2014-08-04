@@ -197,10 +197,11 @@ class LFPset(object):
             posclus = boot.label_clusters(pos)
             negclus = boot.label_clusters(neg)
 
+            # get all masses for clusters other than cluster 0 (= background)
             cluster_masses = np.concatenate([
                 cluster_masses,
-                boot.get_cluster_masses(pos, posclus), 
-                boot.get_cluster_masses(neg, negclus)
+                boot.get_cluster_masses(pos, posclus)[1:], 
+                boot.get_cluster_masses(neg, negclus)[1:]
                 ])
 
         # extract cluster size thresholds based on null distribution

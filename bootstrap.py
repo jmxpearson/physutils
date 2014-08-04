@@ -25,6 +25,8 @@ def tstats(a, b, axis=0, equal_var=True):
 
     # we will use this kernel to smooth our variance estimate
     smoother = np.array([[0, 1., 0], [1., 2., 1.], [0, 1., 0]])
+    # smoother = np.array([[1, 1., 1], [1., 1., 1.], [1, 1., 1]])
+    # smoother = np.array([[0.5, 1., 0.5], [1., 2., 1.], [0.5, 1., 0.5]])
     smoother = smoother / np.sum(smoother)
 
     v1 = np.nanvar(a, axis, ddof=1)

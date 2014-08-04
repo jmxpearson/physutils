@@ -72,7 +72,7 @@ def plot_time_frequency(spectrum, **kwargs):
     """
     times = spectrum.index
     freqs = spectrum.columns
-    z = 10 * np.log10(spectrum.T)
+    z = spectrum.T
     ax = plt.figure().add_subplot(111)
     extent = (times[0], times[-1], freqs[0], freqs[-1])
     if 'interpolation' in kwargs:
@@ -124,9 +124,11 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwarg
     events, do the time-frequency on each using the function tffun,
     and return a tuple containing the list of time-frequency matrices
     (time x frequency), an array of times, and an array of frequencies.
+    NOTE: Returns power on a decibel scale!
     """
     df = core._splitseries(series, events, Tpre, Tpost)
     spectra = [tffun(ser, *args, **kwargs) for (name, ser) in df.iteritems()]
+    spectra = map(lambda x: 10 * np.log10(x), spectra)
     if 'normfun' in kwargs:
         spectra = kwargs['normfun'](spectra)
     specmats = map(lambda x: x.values, spectra)

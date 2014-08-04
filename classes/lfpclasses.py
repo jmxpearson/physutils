@@ -120,7 +120,7 @@ class LFPset(object):
             Tpost, **kwargs)
 
         if doplot:
-            fig = tf.plot_time_frequency(avgtf)
+            fig = tf.plot_time_frequency(avgtf, **kwargs)
         else:
             fig = None
 
@@ -147,7 +147,7 @@ class LFPset(object):
             Tpost, **kwargs)
 
         if doplot:
-            fig = tf.plot_time_frequency(tf0 / tf1) 
+            fig = tf.plot_time_frequency(tf0 / tf1, **kwargs) 
         else:
             fig = None
 
@@ -227,7 +227,7 @@ class LFPset(object):
 
         if doplot:
             color_lims = (np.amin(10 * np.log10(contrast.values)), np.amax(10 * np.log10(contrast.values)))
-            fig = tf.plot_time_frequency(mcontrast, clim=color_lims)
+            fig = tf.plot_time_frequency(mcontrast, clim=color_lims, **kwargs)
         else:
             fig = None
 

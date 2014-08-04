@@ -80,6 +80,10 @@ def plot_time_frequency(spectrum, **kwargs):
     else:
         interp = 'bilinear'
     im = NonUniformImage(ax, interpolation=interp, extent=extent)
+    if 'background_color' in kwargs:
+        im.get_cmap().set_bad(kwargs['background_color'])
+    else:
+        z[np.isnan(z)] = 0.0  # replace missing values with 0 color
     im.set_data(times, freqs, z)
     if 'clim' in kwargs:
         im.set_clim(kwargs['clim'])

@@ -80,7 +80,7 @@ def smooth(df, wid):
     wlen = np.round(wid/ts)
     return pd.rolling_mean(df, wlen, min_periods=1)
 
-def norm_by_trial(timetuple):
+def norm_by_trial(timetuple, method='division'):
     """
     Given a list (one per trial) of dataframes, return a function that
     returns a list of the same type in which each trial is normalized by 
@@ -88,18 +88,21 @@ def norm_by_trial(timetuple):
     """
     def norm_by_range(df):
         baseline = df[slice(*timetuple)].mean()
-        return df.div(baseline)
+        if method == 'division':
+            return df.div(baseline)
+        elif method == 'subtraction':
+            return df - baseline
 
     def normalize(framelist):
         return map(norm_by_range, framelist)
 
     return normalize
 
-def norm_by_mean(timetuple):
+def norm_by_mean(timetuple, method='division'):
     """
-    Given a list (one per trial) of dataframes, return a function that
-    returns a list of the same type in which all trials are normalized
-    by the mean (across time) of the mean (across frames) 
+    Given a list (one per trial) of dataframes, return a normalizer 
+    function that returns a list of the same type in which all trials 
+    are normalized by the mean (across time) of the mean (across frames)
     of the dataframe values in the range given by timetuple.
     """
     def get_baseline(df):
@@ -108,7 +111,10 @@ def norm_by_mean(timetuple):
     def normalize(framelist):
         all_baselines = map(get_baseline, framelist)
         mean_baseline = reduce(lambda x, y: x.add(y, fill_value=0), all_baselines) / len(framelist)
-        return map(lambda x: x.div(mean_baseline), framelist)
+        if method == 'division':
+            return map(lambda x: x.div(mean_baseline), framelist)
+        elif method == 'subtraction':
+            return map(lambda x: x - mean_baseline, framelist)
 
     return normalize
 

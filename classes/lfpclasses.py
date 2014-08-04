@@ -227,7 +227,7 @@ class LFPset(object):
 
         if doplot:
             color_lims = (np.amin(10 * np.log10(contrast.values)), np.amax(10 * np.log10(contrast.values)))
-            fig = tf.plot_time_frequency(mcontrast, clim=color_lims, **kwargs)
+            fig = tf.plot_time_frequency(mcontrast, clim=color_lims)
         else:
             fig = None
 

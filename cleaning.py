@@ -40,7 +40,7 @@ def _hansmooth(x, wlen):
     y = np.convolve(ww/ww.sum(),xx, mode='valid')
     return y[(wlen/2 - 1):-wlen/2]
 
-def censor_railing(x, thresh=4, toler=1e-2, minlen=10, smooth_wid=300):
+def censor_railing(x, thresh=3, toler=1e-2, minlen=10, smooth_wid=300):
     """
     Given a numpy array x, censor the dataset by detecting and removing 
     artifacts due to railing signal, returning a boolean 

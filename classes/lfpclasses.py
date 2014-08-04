@@ -147,11 +147,11 @@ class LFPset(object):
             Tpost, **kwargs)
 
         if doplot:
-            fig = tf.plot_time_frequency(tf0 / tf1, **kwargs) 
+            fig = tf.plot_time_frequency(tf0 - tf1, **kwargs) 
         else:
             fig = None
 
-        return tf0 / tf1, fig
+        return tf0 - tf1, fig
 
     def significant_time_frequency(self, channel, times, Tpre, Tpost, thresh, niter=1000, pval=0.05, method='wav', doplot=True, **kwargs):
         """
@@ -220,7 +220,7 @@ class LFPset(object):
         # make contrast image
         img0 = tf._mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
         img1 = tf._mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
-        contrast = img0 / img1
+        contrast = img0 - img1
 
         # use mask from statistic map to mask original data
         mcontrast = contrast.copy().mask(signif.mask)

@@ -24,23 +24,20 @@ def spectrogram(series, winlen, frac_overlap):
         pad_to=Npad)
     return pd.DataFrame(spec[0].T, columns=spec[1], index=spec[2] + series.index[0])
 
-def continuous_wavelet(series, freqs=None, *args, **kwargs):
+def continuous_wavelet(series, freqs=None, bandwidth=4.5, *args, **kwargs):
     """
     Construct a continuous wavelet transform for the data series.
     Extra pars are parameters for the Morlet wavelet.
     Returns a tuple (time-frequency matrix, frequencies, times)
     """
-    if not freqs:
+    if freqs is None:
         # define some default LFP frequencies of interest
         freqlist = [np.arange(1, 13), np.arange(15, 30, 3), np.arange(35, 100, 5)]
         freqs = np.concatenate(freqlist)
 
     dt = series.index[1] - series.index[0]
-    scales = 1. / (2 * np.pi * freqs * dt)  # widths need to be in samples, not seconds
-    if 'w' in kwargs:
-        wav = _make_morlet(kwargs['w'])
-    else:
-        wav = _make_morlet(*args)
+    wav = _make_morlet(bandwidth)
+    scales = bandwidth / (2 * np.pi * freqs * dt)
     rwavelet = lambda N, b: np.real(wav(N, b))
     iwavelet = lambda N, b: np.imag(wav(N, b))
     tfr = ssig.cwt(series.values, rwavelet, scales)
@@ -49,12 +46,12 @@ def continuous_wavelet(series, freqs=None, *args, **kwargs):
 
     return pd.DataFrame(tf.T, columns=freqs, index=series.index)
 
-def _make_morlet(w=np.sqrt(2) * np.pi):
+def _make_morlet(w):
     """
     Coded to conform to the requirements of scipy.signal.cwt.
     WARNING: scipy.signal.morlet does not follow the recommended convention!
-    Default value of w corresponds (up to a rescaling) to the 1-1 
-    complex Morlet wavelet in Matlab.
+    w = np.sqrt(2) * np.pi corresponds to the 1-1 complex Morlet wavelet 
+    in Matlab.
     """
     def wav(N, b):
         x = (np.arange(0, N) - (N - 1.0) / 2) / b

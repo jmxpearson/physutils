@@ -36,7 +36,7 @@ def continuous_wavelet(series, freqs=None, *args, **kwargs):
         freqs = np.concatenate(freqlist)
 
     dt = series.index[1] - series.index[0]
-    scales = 1. / (freqs * dt)  # widths need to be in samples, not seconds
+    scales = 1. / (2 * np.pi * freqs * dt)  # widths need to be in samples, not seconds
     if 'w' in kwargs:
         wav = _make_morlet(kwargs['w'])
     else:

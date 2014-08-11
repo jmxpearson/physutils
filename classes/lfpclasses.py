@@ -103,7 +103,7 @@ class LFPset(object):
             t0).unstack()
         return self.dataframe.apply(split_to_series)
 
-    def avg_time_frequency(self, channel, times, Tpre, Tpost, method='wav', doplot=True, **kwargs):
+    def avg_time_frequency(self, channel, times, Tpre, Tpost, method='wav', doplot=True, dbscale=True, **kwargs):
         """
         Do a time frequency decomposition, averaging across chunks split at 
         times. **kwargs are passed on as parameters to the method call:
@@ -120,19 +120,19 @@ class LFPset(object):
             Tpost, **kwargs)
 
         if doplot:
-            fig = tf.plot_time_frequency(avgtf, **kwargs)
+            fig = tf.plot_time_frequency(avgtf, dbscale=dbscale, **kwargs)
         else:
             fig = None
 
         return avgtf, fig
 
-    def contrast_time_frequency(self, channel, times, Tpre, Tpost, method='wav', doplot=True, **kwargs):
+    def contrast_time_frequency(self, channel, times, Tpre, Tpost, method='wav', doplot=True, dbscale=True, **kwargs):
         """
         Do a contrast analysis for two sets of events. times is an iterable
         containing times for each. Returned value is a ratio of time-frequency
         power in the first set vs. the second. **kwargs are passed on as 
         parameters to the method call:
-        method 'wav': w parameter
+        method 'bandwidth': bandwidth parameter
         method 'spec': window length (in s) and fraction overlap
         """
         series = self.dataframe[channel]
@@ -147,13 +147,13 @@ class LFPset(object):
             Tpost, **kwargs)
 
         if doplot:
-            fig = tf.plot_time_frequency(tf0 - tf1, **kwargs) 
+            fig = tf.plot_time_frequency(tf0 / tf1, dbscale=dbscale, **kwargs) 
         else:
             fig = None
 
-        return tf0 - tf1, fig
+        return tf0 / tf1, fig
 
-    def significant_time_frequency(self, channel, times, Tpre, Tpost, thresh, niter=1000, pval=0.05, method='wav', doplot=True, **kwargs):
+    def significant_time_frequency(self, channel, times, Tpre, Tpost, thresh, niter=1000, pval=0.05, method='wav', doplot=True, diff_fun=boot.F_stat,**kwargs): 
         """
         Given a data series determined by channel, a two-element iterable, 
         times, containing times for a pair of events, pre and post-event 
@@ -191,8 +191,8 @@ class LFPset(object):
         cluster_masses = []
         for ind in np.arange(niter):
             labels = np.random.permutation(alltimes['label'])
-            pos = boot.make_thresholded_diff(spectra, labels, hi=thhi)
-            neg = boot.make_thresholded_diff(spectra, labels, lo=thlo)
+            pos = boot.make_thresholded_diff(spectra, labels, hi=thhi, diff_fun=diff_fun)
+            neg = boot.make_thresholded_diff(spectra, labels, lo=thlo, diff_fun=diff_fun)
 
             posclus = boot.label_clusters(pos)
             negclus = boot.label_clusters(neg)
@@ -200,9 +200,10 @@ class LFPset(object):
             # get all masses for clusters other than cluster 0 (= background)
             cluster_masses = np.concatenate([
                 cluster_masses,
-                boot.get_cluster_masses(pos, posclus)[1:], 
+                boot.get_cluster_masses(pos, posclus)[1:],
                 boot.get_cluster_masses(neg, negclus)[1:]
                 ])
+
 
         # extract cluster size thresholds based on null distribution
         cluster_masses = np.sort(cluster_masses)
@@ -216,18 +217,19 @@ class LFPset(object):
         # get significance-masked array for statistic image
         truelabels = alltimes['label'].values
         signif = boot.threshold_clusters(spectra, truelabels, lo=thlo,
-            hi=thhi, keeplo=Clo, keephi=Chi)
+            hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun)
 
         # make contrast image
         img0 = tf._mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
         img1 = tf._mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
-        contrast = img0 - img1
+        contrast = img0 / img1
 
         # use mask from statistic map to mask original data
         mcontrast = contrast.copy().mask(signif.mask)
 
         if doplot:
-            color_lims = (np.amin(contrast.values), np.amax(contrast.values))
+            dbvals = 10 * np.log10(contrast.values)
+            color_lims = (np.amin(dbvals), np.amax(dbvals))
             fig = tf.plot_time_frequency(mcontrast, clim=color_lims, **kwargs)
         else:
             fig = None

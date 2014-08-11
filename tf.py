@@ -24,7 +24,7 @@ def spectrogram(series, winlen, frac_overlap):
         pad_to=Npad)
     return pd.DataFrame(spec[0].T, columns=spec[1], index=spec[2] + series.index[0])
 
-def continuous_wavelet(series, freqs=None, bandwidth=4.5, *args, **kwargs):
+def continuous_wavelet(series, freqs=None, bandwidth=4.5, **kwargs):
     """
     Construct a continuous wavelet transform for the data series.
     Extra pars are parameters for the Morlet wavelet.
@@ -62,7 +62,8 @@ def _make_morlet(w):
 
     return wav
 
-def plot_time_frequency(spectrum, **kwargs):
+def plot_time_frequency(spectrum, interpolation='bilinear', 
+    background_color=None, clim=None, dbscale=True, **kwargs):
     """
     Time-frequency plot. Modeled after image_nonuniform.py example 
     spectrum is a dataframe with frequencies in columns and time in rows
@@ -72,18 +73,22 @@ def plot_time_frequency(spectrum, **kwargs):
     z = spectrum.T
     ax = plt.figure().add_subplot(111)
     extent = (times[0], times[-1], freqs[0], freqs[-1])
-    if 'interpolation' in kwargs:
-        interp = kwargs['interpolation']
-    else:
-        interp = 'bilinear'
-    im = NonUniformImage(ax, interpolation=interp, extent=extent)
-    if 'background_color' in kwargs:
+    
+    im = NonUniformImage(ax, interpolation=interpolation, extent=extent)
+
+    if background_color:
         im.get_cmap().set_bad(kwargs['background_color'])
     else:
         z[np.isnan(z)] = 0.0  # replace missing values with 0 color
-    im.set_data(times, freqs, z)
-    if 'clim' in kwargs:
-        im.set_clim(kwargs['clim'])
+
+    if clim:
+        im.set_clim(clim)
+
+    if dbscale:
+        im.set_data(times, freqs, 10 * np.log10(z))
+    else:
+        im.set_data(times, freqs, z)
+
     ax.set_xlim(extent[0], extent[1])
     ax.set_ylim(extent[2], extent[3])
     ax.images.append(im)
@@ -92,18 +97,25 @@ def plot_time_frequency(spectrum, **kwargs):
     plt.ylabel('Frequency (Hz)')
     return plt.gcf() 
 
-def avg_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs):
+def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, **kwargs):
     """
     Given a Pandas series, split it into chunks of (Tpre, Tpost) around
     events, do the time-frequency on each using the function tffun,
     and return a DataFrame with time as the index and frequency as the 
     column label.
+    To reduce edge artifacts, the interval is expanded by a fraction expand 
+    on either side of the requested interval and truncated before returning.
     Note that, as per evtsplit, events before the events have Tpre < 0.
-    *args and **kwargs are passed on to tffun
+    **kwargs is passed on to tffun
     """
-    specmats, times, freqs = _per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs)
+    orig_slice = slice(Tpre, Tpost)
+    dT = Tpost - Tpre
+    Tpre_x = Tpre - expand * dT 
+    Tpost_x = Tpost + expand * dT
+
+    specmats, times, freqs = _per_event_time_frequency(series, tffun, events, Tpre_x, Tpost_x, **kwargs)
     
-    return _mean_from_events(specmats, times, freqs)
+    return _mean_from_events(specmats, times, freqs)[orig_slice]
 
 def _mean_from_events(specmats, times, freqs):
     """
@@ -125,7 +137,6 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwarg
     """
     df = core._splitseries(series, events, Tpre, Tpost)
     spectra = [tffun(ser, *args, **kwargs) for (name, ser) in df.iteritems()]
-    spectra = map(lambda x: 10 * np.log10(x), spectra)
     if 'normfun' in kwargs:
         spectra = kwargs['normfun'](spectra)
     specmats = map(lambda x: x.values, spectra)

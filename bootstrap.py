@@ -15,6 +15,22 @@ def diff_t_stat(arraylist, labels):
     tmap = tstats(arr0, arr1, equal_var=False)[0]
     return tmap
 
+def F_stat(arraylist, labels):
+    multarray = np.array(arraylist) # convert to array along dim 0
+    lls = np.array(labels)  # make sure this is an array
+    arr0 = multarray[lls == 0]
+    arr1 = multarray[lls == 1]
+
+    # if each element of arr0 is chi2(1), then the mean of d such 
+    # arrays is chi2(d), and a ratio of such chi2 variables is F(d1, d2)
+    chi2n = np.nanmean(arr0, axis=0) / np.nanstd(arr0, axis=0)
+    chi2d = np.nanmean(arr1, axis=0) / np.nanstd(arr1, axis=0)
+    Fmap = chi2n / chi2d
+    return Fmap
+
+def log_F_stat(arraylist, labels):
+    return 10 * np.log10(F_stat(arraylist, labels))
+    
 def tstats(a, b, axis=0, equal_var=True):
     """
     Version of scipy.stats.ttest_ind rewritten to handle NaNs

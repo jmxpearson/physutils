@@ -153,7 +153,7 @@ class LFPset(object):
 
         return tf0 / tf1, fig
 
-    def significant_time_frequency(self, channel, times, Tpre, Tpost, thresh, niter=1000, pval=0.05, method='wav', doplot=True, diff_fun=boot.log_F_stat,**kwargs): 
+    def significant_time_frequency(self, channel, times, Tpre, Tpost, thresh, niter=1000, pval=0.05, method='wav', doplot=True, **kwargs): 
         """
         Given a data series determined by channel, a two-element iterable, 
         times, containing times for a pair of events, pre and post-event 
@@ -166,72 +166,16 @@ class LFPset(object):
         two conditions (times[0] - times[1]).
         """
         series = self.dataframe[channel]
-        if method == 'wav':
-            callback = tf.continuous_wavelet
-        else:
-            callback = tf.spectrogram
 
-        # make a dataframe containing all times, labeled by event type
-        t0 = pd.DataFrame({'time': times[0], 'label': 0})
-        t1 = pd.DataFrame({'time': times[1], 'label': 1})
-        alltimes = pd.concat([t0, t1])
+        contrast, taxis, faxis = boot.significant_time_frequency(series, times, Tpre, Tpost, thresh, niter=niter, pval=pval, method=method, doplot=doplot, **kwargs)
 
-        # get time-frequency matrix for each event
-        spectra, taxis, faxis = tf._per_event_time_frequency(series,
-            callback, alltimes['time'], Tpre, Tpost, **kwargs)
-
-        try: 
-            thlo = thresh[0]
-            thhi = thresh[1]
-        except:
-            thlo = -thresh
-            thhi = thresh
-
-        # now loop
-        cluster_masses = []
-        for ind in np.arange(niter):
-            labels = np.random.permutation(alltimes['label'])
-            pos = boot.make_thresholded_diff(spectra, labels, hi=thhi, diff_fun=diff_fun)
-            neg = boot.make_thresholded_diff(spectra, labels, lo=thlo, diff_fun=diff_fun)
-
-            posclus = boot.label_clusters(pos)
-            negclus = boot.label_clusters(neg)
-
-            # get all masses for clusters other than cluster 0 (= background)
-            cluster_masses = np.concatenate([
-                cluster_masses,
-                boot.get_cluster_masses(pos, posclus)[1:],
-                boot.get_cluster_masses(neg, negclus)[1:]
-                ])
-
-
-        # extract cluster size thresholds based on null distribution
-        cluster_masses = np.sort(cluster_masses)
-        plo = pval / 2.0
-        phi = 1 - plo
-        Nlo = np.floor(cluster_masses.size * plo)
-        Nhi = np.ceil(cluster_masses.size * phi)
-        Clo = cluster_masses[Nlo]
-        Chi = cluster_masses[Nhi]
-
-        # get significance-masked array for statistic image
-        truelabels = alltimes['label'].values
-        signif = boot.threshold_clusters(spectra, truelabels, lo=thlo,
-            hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun)
-
-        # make contrast image
-        img0 = tf._mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
-        img1 = tf._mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
-        contrast = img0 / img1
-
-        # use mask from statistic map to mask original data
-        mcontrast = contrast.copy().mask(signif.mask)
+        dfcontrast = pd.DataFrame(contrast, index=taxis, columns=faxis)
 
         if doplot:
-            dbvals = 10 * np.log10(contrast.values)
+            dbvals = 10 * np.log10(contrast.data)
             color_lims = (np.amin(dbvals), np.amax(dbvals))
-            fig = tf.plot_time_frequency(mcontrast, clim=color_lims, **kwargs)
+            fig = tf.plot_time_frequency(dfcontrast, clim=color_lims, **kwargs)
         else:
             fig = None
 
-        return mcontrast, fig 
+        return dfcontrast, fig 

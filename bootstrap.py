@@ -4,7 +4,8 @@ time-frequency data.
 """
 
 import numpy as np
-import physutils.classes.unionfind as unionfind
+from .classes import unionfind
+from . import tf
 from scipy.signal import convolve2d
 
 def diff_t_stat(arraylist, labels):
@@ -12,6 +13,14 @@ def diff_t_stat(arraylist, labels):
     lls = np.array(labels)  # make sure this is an array
     arr0 = multarray[lls == 0]
     arr1 = multarray[lls == 1]
+    tmap = tstats(arr0, arr1, equal_var=False)[0]
+    return tmap
+
+def t_of_log(arraylist, labels):
+    multarray = np.array(arraylist) # convert to array along dim 0
+    lls = np.array(labels)  # make sure this is an array
+    arr0 = 10 * np.log10(multarray[lls == 0])
+    arr1 = 10 * np.log10(multarray[lls == 1])
     tmap = tstats(arr0, arr1, equal_var=False)[0]
     return tmap
 
@@ -30,7 +39,7 @@ def F_stat(arraylist, labels):
 
 def log_F_stat(arraylist, labels):
     return 10 * np.log10(F_stat(arraylist, labels))
-    
+
 def tstats(a, b, axis=0, equal_var=True):
     """
     Version of scipy.stats.ttest_ind rewritten to handle NaNs
@@ -204,3 +213,85 @@ def get_cluster_masses(arr, indices):
     counts = np.bincount(indices.ravel(), arr.ravel())
     counts = counts
     return counts
+
+def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, diff_fun=t_of_log, **kwargs): 
+    """
+    Given a data series determined by channel, a two-element iterable, 
+    times, containing times for a pair of events, pre and post-event 
+    windows to grab, a scalar threshold (for symmetric 
+    thresholding) or a pair of thresholds (lo, hi) at which to 
+    cut clusters, a number of bootstrap iterations, and a p-value for
+    statistical significance,
+    return a time-frequency dataframe (suitable for plotting) containing
+    the statistically significant clusters in the contrast between the 
+    two conditions (times[0] - times[1]).
+    """
+    if method == 'wav':
+        callback = tf.continuous_wavelet
+    else:
+        callback = tf.spectrogram
+
+    dT = Tpost - Tpre
+    Tpre_x = Tpre - expand * dT 
+    Tpost_x = Tpost + expand * dT
+
+    # make a dataframe containing all times, labeled by event type
+    alltimes = np.concatenate((times[0], times[0]))
+    labels0 = np.zeros_like(times[0])
+    labels1 = np.ones_like(times[1])
+    alllabels = np.concatenate((labels0, labels1))
+
+    # get time-frequency matrix for each event
+    spectra, taxis, faxis = tf._per_event_time_frequency(series,
+        callback, alltimes, Tpre_x, Tpost_x, **kwargs)
+
+    try: 
+        thlo = thresh[0]
+        thhi = thresh[1]
+    except:
+        thlo = -thresh
+        thhi = thresh
+
+    # now loop
+    cluster_masses = []
+    for ind in np.arange(niter):
+        labels = np.random.permutation(alllabels)
+        pos = make_thresholded_diff(spectra, labels, hi=thhi, diff_fun=diff_fun)
+        neg = make_thresholded_diff(spectra, labels, lo=thlo, diff_fun=diff_fun)
+
+        posclus = label_clusters(pos)
+        negclus = label_clusters(neg)
+
+        # get all masses for clusters other than cluster 0 (= background)
+        cluster_masses = np.concatenate([
+            cluster_masses,
+            get_cluster_masses(pos, posclus)[1:],
+            get_cluster_masses(neg, negclus)[1:]
+            ])
+
+
+    # extract cluster size thresholds based on null distribution
+    cluster_masses = np.sort(cluster_masses)
+    plo = pval / 2.0
+    phi = 1 - plo
+    Nlo = np.floor(cluster_masses.size * plo)
+    Nhi = np.ceil(cluster_masses.size * phi)
+    Clo = cluster_masses[Nlo]
+    Chi = cluster_masses[Nhi]
+
+    # get significance-masked array for statistic image
+    truelabels = alllabels
+    signif = threshold_clusters(spectra, truelabels, lo=thlo,
+        hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun)
+
+    # make contrast image
+    img0 = tf._mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
+    img1 = tf._mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
+    contrast = (img0 / img1)
+
+    # use mask from statistic map to mask original data
+    # mcontrast = contrast.copy().mask(signif.mask)
+    mcontrast = np.ma.masked_array(data=contrast.values, mask=signif.mask)
+    to_return = np.logical_and(taxis >= Tpre, taxis < Tpost)
+
+    return mcontrast[to_return], taxis[to_return], faxis

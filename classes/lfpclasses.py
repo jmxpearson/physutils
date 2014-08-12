@@ -153,7 +153,7 @@ class LFPset(object):
 
         return tf0 / tf1, fig
 
-    def significant_time_frequency(self, channel, times, Tpre, Tpost, thresh, niter=1000, pval=0.05, method='wav', doplot=True, diff_fun=boot.F_stat,**kwargs): 
+    def significant_time_frequency(self, channel, times, Tpre, Tpost, thresh, niter=1000, pval=0.05, method='wav', doplot=True, diff_fun=boot.log_F_stat,**kwargs): 
         """
         Given a data series determined by channel, a two-element iterable, 
         times, containing times for a pair of events, pre and post-event 

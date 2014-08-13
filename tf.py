@@ -70,7 +70,10 @@ def plot_time_frequency(spectrum, interpolation='bilinear',
     """
     times = spectrum.index
     freqs = spectrum.columns
-    z = spectrum.T
+    if dbscale:
+        z = 10 * np.log10(spectrum.T)
+    else:
+        z = spectrum.T
     ax = plt.figure().add_subplot(111)
     extent = (times[0], times[-1], freqs[0], freqs[-1])
     
@@ -84,11 +87,7 @@ def plot_time_frequency(spectrum, interpolation='bilinear',
     if clim:
         im.set_clim(clim)
 
-    if dbscale:
-        im.set_data(times, freqs, 10 * np.log10(z))
-    else:
-        im.set_data(times, freqs, z)
-
+    im.set_data(times, freqs, z)
     ax.set_xlim(extent[0], extent[1])
     ax.set_ylim(extent[2], extent[3])
     ax.images.append(im)
@@ -97,7 +96,7 @@ def plot_time_frequency(spectrum, interpolation='bilinear',
     plt.ylabel('Frequency (Hz)')
     return plt.gcf() 
 
-def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, **kwargs):
+def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, normfun=None, **kwargs):
     """
     Given a Pandas series, split it into chunks of (Tpre, Tpost) around
     events, do the time-frequency on each using the function tffun,
@@ -114,8 +113,11 @@ def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, **kwargs)
     Tpost_x = Tpost + expand * dT
 
     specmats, times, freqs = _per_event_time_frequency(series, tffun, events, Tpre_x, Tpost_x, **kwargs)
+
+    if normfun: 
+        normspec = normfun(specmats) 
     
-    return _mean_from_events(specmats, times, freqs)[orig_slice]
+    return _mean_from_events(normspec, times, freqs)[orig_slice]
 
 def _mean_from_events(specmats, times, freqs):
     """
@@ -133,14 +135,10 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwarg
     events, do the time-frequency on each using the function tffun,
     and return a tuple containing the list of time-frequency matrices
     (time x frequency), an array of times, and an array of frequencies.
-    NOTE: Returns power on a decibel scale!
     """
     df = core._splitseries(series, events, Tpre, Tpost)
     spectra = [tffun(ser, *args, **kwargs) for (name, ser) in df.iteritems()]
-    if 'normfun' in kwargs:
-        spectra = kwargs['normfun'](spectra)
-    specmats = map(lambda x: x.values, spectra)
     times = spectra[0].index
     freqs = spectra[0].columns
-    return (specmats, times, freqs)
+    return (spectra, times, freqs)
 

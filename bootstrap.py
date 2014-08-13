@@ -214,7 +214,7 @@ def get_cluster_masses(arr, indices):
     counts = counts
     return counts
 
-def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, diff_fun=t_of_log, **kwargs): 
+def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=t_of_log, **kwargs): 
     """
     Given a data series determined by channel, a two-element iterable, 
     times, containing times for a pair of events, pre and post-event 
@@ -236,14 +236,26 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     Tpost_x = Tpost + expand * dT
 
     # make a dataframe containing all times, labeled by event type
-    alltimes = np.concatenate((times[0], times[0]))
     labels0 = np.zeros_like(times[0])
     labels1 = np.ones_like(times[1])
     alllabels = np.concatenate((labels0, labels1))
 
     # get time-frequency matrix for each event
-    spectra, taxis, faxis = tf._per_event_time_frequency(series,
-        callback, alltimes, Tpre_x, Tpost_x, **kwargs)
+    spec0, taxis, faxis = tf._per_event_time_frequency(series,
+        callback, times[0], Tpre_x, Tpost_x, **kwargs)
+    spec1, taxis, faxis = tf._per_event_time_frequency(series,
+        callback, times[1], Tpre_x, Tpost_x, **kwargs)
+
+    # normalize
+    if normfun:
+        spec0 = normfun(spec0)
+        spec1 = normfun(spec1)
+
+    # combine
+    spectra = spec0 + spec1
+
+    # convert from dataframes to ndarrays
+    spectra = [s.values for s in spectra]
 
     try: 
         thlo = thresh[0]

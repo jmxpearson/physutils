@@ -115,9 +115,9 @@ def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, normfun=N
     specmats, times, freqs = _per_event_time_frequency(series, tffun, events, Tpre_x, Tpost_x, **kwargs)
 
     if normfun: 
-        normspec = normfun(specmats) 
+        specmats = normfun(specmats) 
     
-    return _mean_from_events(normspec, times, freqs)[orig_slice]
+    return _mean_from_events(specmats, times, freqs)[orig_slice]
 
 def _mean_from_events(specmats, times, freqs):
     """

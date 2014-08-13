@@ -37,6 +37,29 @@ def F_stat(arraylist, labels):
     Fmap = chi2n / chi2d
     return Fmap
 
+def normalized_diff_mean_power(arraylist, labels):
+    multarray = np.array(arraylist) # convert to array along dim 0
+    lls = np.array(labels)  # make sure this is an array
+    # convert to log scale 
+    arr0 = np.log(multarray[lls == 0])
+    arr1 = np.log(multarray[lls == 1])
+
+    m0 = np.nanmean(arr0, axis=0)
+    m1 = np.nanmean(arr1, axis=0)
+
+    s0 = np.nanstd(arr0, axis=0)
+    s1 = np.nanstd(arr1, axis=0)
+
+    n0 = np.sum(lls == 0)
+    n1 = np.sum(lls == 1)
+
+    numer = m0 - m1 + 0.5 * (s0 ** 2 - s1 ** 2)
+    denom = np.sqrt((s0 ** 2 / n0) + (s1 **2 / n1) + (s0 ** 4 / (n0 - 1)) +
+        (s1 ** 4 / (n1 - 1)))
+
+    return numer / denom
+
+
 def log_F_stat(arraylist, labels):
     return 10 * np.log10(F_stat(arraylist, labels))
 

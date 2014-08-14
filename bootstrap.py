@@ -37,7 +37,7 @@ def F_stat(arraylist, labels):
     Fmap = chi2n / chi2d
     return Fmap
 
-def normalized_diff_mean_power(arraylist, labels):
+def normalized_diff_mean_power(arraylist, labels, smoother_size=(5, 5)):
     multarray = np.array(arraylist) # convert to array along dim 0
     lls = np.array(labels)  # make sure this is an array
     # convert to log scale 
@@ -47,18 +47,26 @@ def normalized_diff_mean_power(arraylist, labels):
     m0 = np.nanmean(arr0, axis=0)
     m1 = np.nanmean(arr1, axis=0)
 
-    s0 = np.nanstd(arr0, axis=0)
-    s1 = np.nanstd(arr1, axis=0)
+    smoother = np.ones(smoother_size)
+    smoother = smoother / np.sum(smoother)
+
+    v0 = np.nanvar(arr0, axis=0, ddof=1)
+    v1 = np.nanvar(arr1, axis=0, ddof=1)
+
+    v0 = convolve2d(np.nan_to_num(v0), smoother, mode='same')
+    v1 = convolve2d(np.nan_to_num(v1), smoother, mode='same')
+
+    s0 = np.sqrt(v0)
+    s1 = np.sqrt(v1)
 
     n0 = np.sum(lls == 0)
     n1 = np.sum(lls == 1)
 
     numer = m0 - m1 + 0.5 * (s0 ** 2 - s1 ** 2)
-    denom = np.sqrt((s0 ** 2 / n0) + (s1 **2 / n1) + (s0 ** 4 / (n0 - 1)) +
+    denom = np.sqrt((s0 ** 2 / n0) + (s1 ** 2 / n1) + (s0 ** 4 / (n0 - 1)) +
         (s1 ** 4 / (n1 - 1)))
 
     return numer / denom
-
 
 def log_F_stat(arraylist, labels):
     return 10 * np.log10(F_stat(arraylist, labels))
@@ -105,7 +113,7 @@ def tstats(a, b, axis=0, equal_var=True):
 
     return t, df
 
-def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=diff_t_stat):
+def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=normalized_diff_mean_power):
     """
     Given a list of arrays and an array of labels designating conditions, 
     calculate a difference map based on diff_fun. Return a masked array
@@ -127,7 +135,7 @@ def select_clusters(arr, cluster_inds):
         boolarr[ind] = arr == cnum
     return np.any(boolarr, 0)
 
-def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, keephi=None, diff_fun=diff_t_stat):
+def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, keephi=None, diff_fun=normalized_diff_mean_power):
     """
     Given a list of arrays corresponding to single trials, a list of labels
     corresponding to classes, lo and hi thresholds, and keeplo and keephi
@@ -237,7 +245,7 @@ def get_cluster_masses(arr, indices):
     counts = counts
     return counts
 
-def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=t_of_log, **kwargs): 
+def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=normalized_diff_mean_power, **kwargs): 
     """
     Given a data series determined by channel, a two-element iterable, 
     times, containing times for a pair of events, pre and post-event 

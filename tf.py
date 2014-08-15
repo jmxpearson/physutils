@@ -129,7 +129,7 @@ def _mean_from_events(specmats, times, freqs):
 
     return pd.DataFrame(meanspec, index=times, columns=freqs)
 
-def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=False, **kwargs):
+def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=True, **kwargs):
     """
     Given a Pandas series, split it into chunks of (Tpre, Tpost) around
     events, do the time-frequency on each using the function tffun,

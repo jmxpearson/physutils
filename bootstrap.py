@@ -266,16 +266,16 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     Tpre_x = Tpre - expand * dT 
     Tpost_x = Tpost + expand * dT
 
-    # make a dataframe containing all times, labeled by event type
-    labels0 = np.zeros_like(times[0])
-    labels1 = np.ones_like(times[1])
-    alllabels = np.concatenate((labels0, labels1))
-
     # get time-frequency matrix for each event
     spec0, taxis, faxis = tf._per_event_time_frequency(series,
         callback, times[0], Tpre_x, Tpost_x, **kwargs)
     spec1, taxis, faxis = tf._per_event_time_frequency(series,
         callback, times[1], Tpre_x, Tpost_x, **kwargs)
+
+    # make a dataframe containing all times, labeled by event type
+    labels0 = np.zeros((len(spec0),))
+    labels1 = np.ones((len(spec1),))
+    alllabels = np.concatenate((labels0, labels1))
 
     # normalize
     if normfun:

@@ -129,7 +129,7 @@ def _mean_from_events(specmats, times, freqs):
 
     return pd.DataFrame(meanspec, index=times, columns=freqs)
 
-def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwargs):
+def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=False, **kwargs):
     """
     Given a Pandas series, split it into chunks of (Tpre, Tpost) around
     events, do the time-frequency on each using the function tffun,
@@ -137,7 +137,10 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, *args, **kwarg
     (time x frequency), an array of times, and an array of frequencies.
     """
     df = core._splitseries(series, events, Tpre, Tpost)
-    spectra = [tffun(ser, *args, **kwargs) for (name, ser) in df.iteritems()]
+    if complete_only:
+        spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems() if not np.any(np.isnan(ser))]
+    else:
+        spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems()]
     times = spectra[0].index
     freqs = spectra[0].columns
     return (spectra, times, freqs)

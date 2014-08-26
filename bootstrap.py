@@ -328,13 +328,12 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
         hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun)
 
     # make contrast image
-    img0 = tf._mean_from_events(np.array(spectra)[truelabels == 0], taxis, faxis)
-    img1 = tf._mean_from_events(np.array(spectra)[truelabels == 1], taxis, faxis)
+    img0 = np.nanmean(np.array(spectra)[truelabels == 0], axis=0)
+    img1 = np.nanmean(np.array(spectra)[truelabels == 1], axis=0)
     contrast = (img0 / img1)
 
     # use mask from statistic map to mask original data
-    # mcontrast = contrast.copy().mask(signif.mask)
-    mcontrast = np.ma.masked_array(data=contrast.values, mask=signif.mask)
+    mcontrast = np.ma.masked_array(data=contrast, mask=signif.mask)
     to_return = np.logical_and(taxis >= Tpre, taxis < Tpost)
 
     return mcontrast[to_return], taxis[to_return], faxis

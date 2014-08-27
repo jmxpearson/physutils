@@ -8,24 +8,21 @@ from .classes import unionfind
 from . import tf
 from scipy.signal import convolve2d
 
-def diff_t_stat(arraylist, labels):
-    multarray = np.array(arraylist) # convert to array along dim 0
+def diff_t_stat(multarray, labels):
     lls = np.array(labels)  # make sure this is an array
     arr0 = multarray[lls == 0]
     arr1 = multarray[lls == 1]
     tmap = tstats(arr0, arr1, equal_var=False)[0]
     return tmap
 
-def t_of_log(arraylist, labels):
-    multarray = np.array(arraylist) # convert to array along dim 0
+def t_of_log(multarray, labels):
     lls = np.array(labels)  # make sure this is an array
     arr0 = 10 * np.log10(multarray[lls == 0])
     arr1 = 10 * np.log10(multarray[lls == 1])
     tmap = tstats(arr0, arr1, equal_var=False)[0]
     return tmap
 
-def F_stat(arraylist, labels):
-    multarray = np.array(arraylist) # convert to array along dim 0
+def F_stat(multarray, labels):
     lls = np.array(labels)  # make sure this is an array
     arr0 = multarray[lls == 0]
     arr1 = multarray[lls == 1]
@@ -37,8 +34,7 @@ def F_stat(arraylist, labels):
     Fmap = chi2n / chi2d
     return Fmap
 
-def normalized_diff_mean_power(arraylist, labels, smoother_size=(5, 5)):
-    multarray = np.array(arraylist) # convert to array along dim 0
+def normalized_diff_mean_power(multarray, labels, smoother_size=(5, 5)):
     lls = np.array(labels)  # make sure this is an array
     # convert to log scale 
     arr0 = np.log(multarray[lls == 0])
@@ -286,7 +282,7 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     spectra = spec0 + spec1
 
     # convert from dataframes to ndarrays
-    spectra = [s.values for s in spectra]
+    spectra = np.array([s.values for s in spectra])
 
     try: 
         thlo = thresh[0]
@@ -328,8 +324,8 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
         hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun)
 
     # make contrast image
-    img0 = np.nanmean(np.array(spectra)[truelabels == 0], axis=0)
-    img1 = np.nanmean(np.array(spectra)[truelabels == 1], axis=0)
+    img0 = np.nanmean(spectra[truelabels == 0], axis=0)
+    img1 = np.nanmean(spectra[truelabels == 1], axis=0)
     contrast = (img0 / img1)
 
     # use mask from statistic map to mask original data

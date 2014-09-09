@@ -68,6 +68,9 @@ def plot_time_frequency(spectrum, interpolation='bilinear',
     Time-frequency plot. Modeled after image_nonuniform.py example 
     spectrum is a dataframe with frequencies in columns and time in rows
     """
+    if spectrum is None:
+        return None
+    
     times = spectrum.index
     freqs = spectrum.columns
     if dbscale:
@@ -114,6 +117,9 @@ def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, normfun=N
 
     specmats, times, freqs = _per_event_time_frequency(series, tffun, events, Tpre_x, Tpost_x, **kwargs)
 
+    if len(specmats) == 0:
+        return None
+
     if normfun: 
         specmats = normfun(specmats) 
     
@@ -141,7 +147,13 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=
         spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems() if not np.any(np.isnan(ser))]
     else:
         spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems()]
-    times = spectra[0].index
-    freqs = spectra[0].columns
+
+    if len(spectra) > 0:
+        times = spectra[0].index
+        freqs = spectra[0].columns
+    else:
+        times = None
+        freqs = None
+
     return (spectra, times, freqs)
 

@@ -64,6 +64,14 @@ def normalized_diff_mean_power(multarray, labels, smoother_size=(5, 5)):
 
     return numer / denom
 
+def _ndmp(arraylist, labels):
+    """
+    Convenience wrapper function. Converts arraylist to multidimensional
+    array before passing on to normalized_diff_mean_power.
+    """
+    multarray = np.dstack(arraylist).transpose((2, 0, 1))
+    return normalized_diff_mean_power(multarray, labels)
+
 def log_F_stat(arraylist, labels):
     return 10 * np.log10(F_stat(arraylist, labels))
 
@@ -109,7 +117,7 @@ def tstats(a, b, axis=0, equal_var=True):
 
     return t, df
 
-def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=normalized_diff_mean_power):
+def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=_ndmp):
     """
     Given a list of arrays and an array of labels designating conditions, 
     calculate a difference map based on diff_fun. Return a masked array

@@ -146,8 +146,14 @@ class LFPset(object):
         tf1 = tf.avg_time_frequency(series, callback, times[1], Tpre, 
             Tpost, **kwargs)
 
+        if 'clim' in kwargs:
+            color_lims = kwargs['clim']
+            kwargs.pop('clim', None)
+        else:
+            color_lims = None
+
         if doplot:
-            fig = tf.plot_time_frequency(tf0 / tf1, dbscale=dbscale, **kwargs) 
+            fig = tf.plot_time_frequency(tf0 / tf1, dbscale=dbscale, clim=color_lims, **kwargs) 
         else:
             fig = None
 
@@ -173,7 +179,11 @@ class LFPset(object):
 
         if doplot:
             dbvals = 10 * np.log10(contrast.data)
-            color_lims = (np.amin(dbvals), np.amax(dbvals))
+            if 'clim' in kwargs:
+                color_lims = kwargs['clim']
+                kwargs.pop('clim', None)
+            else:
+                color_lims = (np.amin(dbvals), np.amax(dbvals))
             fig = tf.plot_time_frequency(dfcontrast, clim=color_lims, **kwargs)
         else:
             fig = None

@@ -56,6 +56,15 @@ class LFPset(object):
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 
+    def rzscore(self):
+        # robust zscore based on median absolute deviation
+        rstd = lambda x: (x - x.median()).abs().median() * 1.4826
+        zsc = lambda x: (x - x.median()) / rstd(x)
+        newdf = self.dataframe.apply(zsc)
+        newmeta = self.meta.copy()
+        return LFPset(newdf, newmeta)
+        
+
     def instpwr(self):
         # by padding up to next highest power of 2, we get a huge 
         # performance boost; truncate afterward

@@ -29,8 +29,8 @@ def F_stat(multarray, labels):
 
     # if each element of arr0 is chi2(1), then the mean of d such 
     # arrays is chi2(d), and a ratio of such chi2 variables is F(d1, d2)
-    chi2n = np.nanmean(arr0, axis=0) / np.nanstd(arr0, axis=0)
-    chi2d = np.nanmean(arr1, axis=0) / np.nanstd(arr1, axis=0)
+    chi2n = np.nanmean(arr0, axis=0) 
+    chi2d = np.nanmean(arr1, axis=0)
     Fmap = chi2n / chi2d
     return Fmap
 
@@ -64,13 +64,13 @@ def normalized_diff_mean_power(multarray, labels, smoother_size=(5, 5)):
 
     return numer / denom
 
-def _ndmp(arraylist, labels):
+def _arraylist_to_multarray(arraylist):
     """
     Convenience wrapper function. Converts arraylist to multidimensional
-    array before passing on to normalized_diff_mean_power.
+    array. 
     """
     multarray = np.dstack(arraylist).transpose((2, 0, 1))
-    return normalized_diff_mean_power(multarray, labels)
+    return multarray
 
 def log_F_stat(arraylist, labels):
     return 10 * np.log10(F_stat(arraylist, labels))
@@ -117,14 +117,14 @@ def tstats(a, b, axis=0, equal_var=True):
 
     return t, df
 
-def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=_ndmp):
+def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=normalized_diff_mean_power):
     """
     Given a list of arrays and an array of labels designating conditions, 
     calculate a difference map based on diff_fun. Return a masked array
     censored outside the interval (lo, hi).
     """
     
-    diffarray = diff_fun(arraylist, labels) 
+    diffarray = diff_fun(_arraylist_to_multarray(arraylist), labels) 
     return np.ma.masked_inside(diffarray, lo, hi)
 
 def select_clusters(arr, cluster_inds):

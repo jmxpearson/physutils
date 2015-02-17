@@ -90,6 +90,9 @@ def plot_time_frequency(spectrum, interpolation='bilinear',
     if clim:
         im.set_clim(clim)
 
+    if 'cmap' in kwargs:
+        im.set_cmap(kwargs['cmap'])
+
     im.set_data(times, freqs, z)
     ax.set_xlim(extent[0], extent[1])
     ax.set_ylim(extent[2], extent[3])

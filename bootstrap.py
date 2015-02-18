@@ -137,7 +137,7 @@ def tstats(a, b, axis=0, equal_var=True):
 
     return t, df
 
-def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=normalized_diff_mean_power):
+def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=F_stat):
     """
     Given a list of arrays and an array of labels designating conditions, 
     calculate a difference map based on diff_fun. Return a masked array
@@ -159,7 +159,7 @@ def select_clusters(arr, cluster_inds):
         boolarr[ind] = arr == cnum
     return np.any(boolarr, 0)
 
-def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, keephi=None, diff_fun=normalized_diff_mean_power, mass_fun=normalized_diff_mean_power):
+def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, keephi=None, diff_fun=F_stat, mass_fun=log_F_stat):
     """
     Given a list of arrays corresponding to single trials, a list of labels
     corresponding to classes, lo and hi thresholds, and keeplo and keephi
@@ -276,19 +276,23 @@ def get_cluster_masses(arr, indices):
     counts = counts
     return counts
 
-def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=normalized_diff_mean_power, mass_fun=normalized_diff_mean_power, **kwargs): 
+def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=F_stat, mass_fun=log_F_stat, **kwargs): 
     """
-    Given a data series determined by channel, a two-element iterable, 
-    times, containing times for a pair of events, pre and post-event 
-    windows to grab, a scalar threshold (for symmetric 
-    thresholding) or a pair of thresholds (lo, hi) at which to 
-    cut clusters, a number of bootstrap iterations, and a p-value for
-    statistical significance,
+    Given a data series 
+    a two-element iterable (times) containing series of event times
+    pre and post-event windows to grab, 
+    an interable of high and low thresholds for the difference statistic 
+       to be used in thresholding pixels to cluster 
+    a number of bootstrap iterations,
+    a p-value for statistical significance,
+    a method for computing time-frequency, 
+    additional arguments:
+    normfun: used to normalize the time-frequency images prior to contrast
+    diff_fun: function used to calculate the difference statistic between maps
+    mass_fun: function to use in calculating masses of clusters for bootstrapping
     return a time-frequency dataframe (suitable for plotting) containing
     the statistically significant clusters in the contrast between the 
     two conditions (times[0] - times[1]).
-    diff_fun is used to threshold pixels
-    mass_fun is used to calculate cluster masses for bootstrapping
     """
     if method == 'wav':
         callback = tf.continuous_wavelet
@@ -321,12 +325,8 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     # convert from dataframes to ndarrays
     spectra = np.array([s.values for s in spectra])
 
-    try: 
-        thlo = thresh[0]
-        thhi = thresh[1]
-    except:
-        thlo = -thresh
-        thhi = thresh
+    thlo = thresh[0]
+    thhi = thresh[1]
 
     # now loop
     cluster_masses = []

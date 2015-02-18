@@ -7,6 +7,7 @@ import numpy as np
 from .classes import unionfind
 from . import tf
 from scipy.signal import convolve2d
+from scipy.stats import f as fdist
 
 def diff_t_stat(multarray, labels):
     lls = np.array(labels)  # make sure this is an array
@@ -23,16 +24,30 @@ def t_of_log(multarray, labels):
     return tmap
 
 def F_stat(multarray, labels):
+    """
+    Given an a multidimensional array multarray and a set of trial labels 
+    (0 and 1) corresponding to the 0th axis of multarray, return an array
+    of cdf values calculated from the F distribution that represents the 
+    ratio of means of the two label groups along the 0th dimension.
+    """
     lls = np.array(labels)  # make sure this is an array
     arr0 = multarray[lls == 0]
     arr1 = multarray[lls == 1]
 
     # if each element of arr0 is chi2(1), then the mean of d such 
-    # arrays is chi2(d), and a ratio of such chi2 variables is F(d1, d2)
+    # arrays is chi2(d)/d, and a ratio of such variables is F(d1, d2)
     chi2n = np.nanmean(arr0, axis=0) 
     chi2d = np.nanmean(arr1, axis=0)
+
+    # calculate degrees of freedom: assume 2 per pixel per trial
+    nu = 2
+    dfn = nu * np.sum(~np.isnan(arr0), axis=0)
+    dfd = nu * np.sum(~np.isnan(arr1), axis=0)
+
     Fmap = chi2n / chi2d
-    return Fmap
+
+    # calculate cdf
+    return fdist.cdf(Fmap, dfn, dfd)
 
 def normalized_diff_mean_power(multarray, labels, smoother_size=(5, 5)):
     lls = np.array(labels)  # make sure this is an array

@@ -23,12 +23,13 @@ def t_of_log(multarray, labels):
     tmap = tstats(arr0, arr1, equal_var=False)[0]
     return tmap
 
-def F_stat(multarray, labels):
+def F_stat(multarray, labels, cdf=True):
     """
     Given an a multidimensional array multarray and a set of trial labels 
     (0 and 1) corresponding to the 0th axis of multarray, return an array
     of cdf values calculated from the F distribution that represents the 
     ratio of means of the two label groups along the 0th dimension.
+    If cdf is False, return the F statistic map.
     """
     lls = np.array(labels)  # make sure this is an array
     arr0 = multarray[lls == 0]
@@ -46,8 +47,12 @@ def F_stat(multarray, labels):
 
     Fmap = chi2n / chi2d
 
-    # calculate cdf
-    return fdist.cdf(Fmap, dfn, dfd)
+    if cdf:
+        # calculate cdf
+        return fdist.cdf(Fmap, dfn, dfd)
+    else:
+        # return statistic itself
+        return Fmap 
 
 def normalized_diff_mean_power(multarray, labels, smoother_size=(5, 5)):
     lls = np.array(labels)  # make sure this is an array
@@ -88,7 +93,7 @@ def _arraylist_to_multarray(arraylist):
     return multarray
 
 def log_F_stat(arraylist, labels):
-    return 10 * np.log10(F_stat(arraylist, labels))
+    return 10 * np.log10(F_stat(arraylist, labels, cdf=False))
 
 def tstats(a, b, axis=0, equal_var=True):
     """
@@ -154,7 +159,7 @@ def select_clusters(arr, cluster_inds):
         boolarr[ind] = arr == cnum
     return np.any(boolarr, 0)
 
-def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, keephi=None, diff_fun=normalized_diff_mean_power):
+def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, keephi=None, diff_fun=normalized_diff_mean_power, mass_fun=normalized_diff_mean_power):
     """
     Given a list of arrays corresponding to single trials, a list of labels
     corresponding to classes, lo and hi thresholds, and keeplo and keephi
@@ -169,10 +174,17 @@ def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, ke
     # label clusters 
     posclus = label_clusters(pos)
     negclus = label_clusters(neg)
+
+    # calculate mass map
+    mass_map = mass_fun(_arraylist_to_multarray(arraylist), labels)
+
+    # mask mass map based on clusters
+    pos_mass = np.ma.masked_array(data=mass_map, mask=pos.mask)
+    neg_mass = np.ma.masked_array(data=mass_map, mask=neg.mask)
    
     # get cluster masses
-    szhi = get_cluster_masses(pos, posclus)
-    szlo = get_cluster_masses(neg, negclus)
+    szhi = get_cluster_masses(pos_mass, posclus)
+    szlo = get_cluster_masses(neg_mass, negclus)
    
     # which cluster numbers exceed size thresholds? 
     hi_inds = np.flatnonzero(szhi >= keephi) 
@@ -194,7 +206,7 @@ def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, ke
 def label_clusters(img):
     """
     Given a masked array, label all masked elements with 0 and each unmasked
-    elements with an integer index of the connected component to which
+    element with an integer index of the connected component to which
     it belongs. 
     Assumes a 4-neighborhood for connectivity. Returns labeled array
     of same shape as input.
@@ -264,7 +276,7 @@ def get_cluster_masses(arr, indices):
     counts = counts
     return counts
 
-def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=normalized_diff_mean_power, **kwargs): 
+def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=normalized_diff_mean_power, mass_fun=normalized_diff_mean_power, **kwargs): 
     """
     Given a data series determined by channel, a two-element iterable, 
     times, containing times for a pair of events, pre and post-event 
@@ -275,6 +287,8 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     return a time-frequency dataframe (suitable for plotting) containing
     the statistically significant clusters in the contrast between the 
     two conditions (times[0] - times[1]).
+    diff_fun is used to threshold pixels
+    mass_fun is used to calculate cluster masses for bootstrapping
     """
     if method == 'wav':
         callback = tf.continuous_wavelet
@@ -318,19 +332,28 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     cluster_masses = []
     for ind in np.arange(niter):
         labels = np.random.permutation(alllabels)
+
+        # find clusters based on diff_fun
         pos = make_thresholded_diff(spectra, labels, hi=thhi, diff_fun=diff_fun)
         neg = make_thresholded_diff(spectra, labels, lo=thlo, diff_fun=diff_fun)
 
+        # label clusters
         posclus = label_clusters(pos)
         negclus = label_clusters(neg)
+
+        # calculate mass map
+        mass_map = mass_fun(spectra, labels)
+
+        # mask mass map based on clusters
+        pos_mass = np.ma.masked_array(data=mass_map, mask=pos.mask)
+        neg_mass = np.ma.masked_array(data=mass_map, mask=neg.mask)
 
         # get all masses for clusters other than cluster 0 (= background)
         cluster_masses = np.concatenate([
             cluster_masses,
-            get_cluster_masses(pos, posclus)[1:],
-            get_cluster_masses(neg, negclus)[1:]
+            get_cluster_masses(pos_mass, posclus)[1:],
+            get_cluster_masses(neg_mass, negclus)[1:]
             ])
-
 
     # extract cluster size thresholds based on null distribution
     cluster_masses = np.sort(cluster_masses)
@@ -344,7 +367,8 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     # get significance-masked array for statistic image
     truelabels = alllabels
     signif = threshold_clusters(spectra, truelabels, lo=thlo,
-        hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun)
+        hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun, 
+        mass_fun=mass_fun)
 
     # make contrast image
     img0 = np.nanmean(spectra[truelabels == 0], axis=0)

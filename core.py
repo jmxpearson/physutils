@@ -147,10 +147,14 @@ def _splitseries(df, ts, Tpre, Tpost, t0=0.0):
     alltrials.columns = pd.Index(np.arange(nevt), name='trial')
     return alltrials
 
-def evtsplit(df, events, Tpre, Tpost, t0=0.0, dt=0.001, timecolumn='time'):
-    # split frame into chunks (Tpre, Tpost) around each event in events
-    # Tpre should be < 0 for times before event
-    # if multiple series are passed, return a list of dataframes
+def evtsplit(df, events, Tpre, Tpost, t0=0.0, dt=0.001, timecolumn='time', 
+    return_by_event=False):
+    """
+    split frame into chunks (Tpre, Tpost) around each event in events
+    Tpre should be < 0 for times before event
+    if multiple series are passed, return a list of dataframes, one per series
+    if return_by_event is True, return a list of dataframes, one per event
+    """
 
     # first, check if df is binned; if not, do so
     if not df.index.name == 'time':
@@ -162,6 +166,14 @@ def evtsplit(df, events, Tpre, Tpost, t0=0.0, dt=0.001, timecolumn='time'):
     for col in binned.columns.values:
         chunklist.append(_splitseries(binned[col], events, Tpre, Tpost, t0))
     idx = binned.columns
+
+    if return_by_event:
+        # make a panel (3D array) of all this data
+        panel = pd.Panel(dict(zip(idx, chunklist)))
+        # transpose so that panel is events x time x series
+        panel = panel.transpose(2, 1, 0)
+        idx = panel.items
+        chunklist = [p for event, p in panel.iteritems()]
 
     return chunklist, idx
 

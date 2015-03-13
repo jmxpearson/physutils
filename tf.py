@@ -24,11 +24,12 @@ def spectrogram(series, winlen, frac_overlap):
         pad_to=Npad)
     return pd.DataFrame(spec[0].T, columns=spec[1], index=spec[2] + series.index[0])
 
-def continuous_wavelet(series, freqs=None, bandwidth=4.5, **kwargs):
+def continuous_wavelet(series, freqs=None, bandwidth=4.5, phase=False, **kwargs):
     """
     Construct a continuous wavelet transform for the data series.
     Extra pars are parameters for the Morlet wavelet.
     Returns a tuple (time-frequency matrix, frequencies, times)
+    If phase=True, returns the phase, else returns the amplitude
     """
     if freqs is None:
         # define some default LFP frequencies of interest
@@ -42,7 +43,11 @@ def continuous_wavelet(series, freqs=None, bandwidth=4.5, **kwargs):
     iwavelet = lambda N, b: np.imag(wav(N, b))
     tfr = ssig.cwt(series.values, rwavelet, scales)
     tfi = ssig.cwt(series.values, iwavelet, scales)
-    tf = tfr ** 2 + tfi ** 2
+
+    if not phase:
+        tf = tfr ** 2 + tfi ** 2
+    else:
+        tf = np.arctan2(tfi, tfr)
 
     return pd.DataFrame(tf.T, columns=freqs, index=series.index)
 
@@ -102,7 +107,8 @@ def plot_time_frequency(spectrum, interpolation='bilinear',
     plt.ylabel('Frequency (Hz)')
     return plt.gcf() 
 
-def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, normfun=None, **kwargs):
+def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, 
+    normfun=None, splitfirst=True, **kwargs):
     """
     Given a Pandas series, split it into chunks of (Tpre, Tpost) around
     events, do the time-frequency on each using the function tffun,
@@ -118,7 +124,7 @@ def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0, normfun=N
     Tpre_x = Tpre - expand * dT 
     Tpost_x = Tpost + expand * dT
 
-    specmats, times, freqs = _per_event_time_frequency(series, tffun, events, Tpre_x, Tpost_x, **kwargs)
+    specmats, times, freqs = _per_event_time_frequency(series, tffun, events, Tpre_x, Tpost_x, splitfirst, **kwargs)
 
     if len(specmats) == 0:
         return None
@@ -138,18 +144,29 @@ def _mean_from_events(specmats, times, freqs):
 
     return pd.DataFrame(meanspec, index=times, columns=freqs)
 
-def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=True, **kwargs):
+def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=True, splitfirst=True, **kwargs):
     """
     Given a Pandas series, split it into chunks of (Tpre, Tpost) around
     events, do the time-frequency on each using the function tffun,
     and return a tuple containing the list of time-frequency matrices
     (time x frequency), an array of times, and an array of frequencies.
     """
-    df = core._splitseries(series, events, Tpre, Tpost)
-    if complete_only:
-        spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems() if not np.any(np.isnan(ser))]
+    # if we want phase information, we cannot split the series into chunks 
+    # before doing the time-frequency transform
+    if 'phase' in kwargs and kwargs['phase']:
+        splitfirst = False
+
+    if splitfirst:
+        df = core._splitseries(series, events, Tpre, Tpost)
+        if complete_only:
+            spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems() if not np.any(np.isnan(ser))]
+        else:
+            spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems()]
     else:
-        spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems()]
+        tf_all = tffun(series, **kwargs)
+        spectra, freqs = core.evtsplit(tf_all, events, Tpre, Tpost, return_by_event=True)
+        if complete_only:
+            spectra = [s for s in spectra if not np.any(np.isnan(s))]
 
     if len(spectra) > 0:
         times = spectra[0].index

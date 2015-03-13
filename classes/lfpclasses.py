@@ -63,7 +63,6 @@ class LFPset(object):
         newdf = self.dataframe.apply(zsc)
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
-        
 
     def instpwr(self):
         # by padding up to next highest power of 2, we get a huge 
@@ -73,6 +72,17 @@ class LFPset(object):
         hilbert_pad = lambda x: hilbert(x, N=Nfft)[:Nstart]
         newdf = self.dataframe.apply(hilbert_pad, raw=True)
         newdf = newdf.apply(np.absolute) ** 2
+        newmeta = self.meta.copy()
+        return LFPset(newdf, newmeta)
+
+    def instphase(self):
+        # by padding up to next highest power of 2, we get a huge 
+        # performance boost; truncate afterward
+        Nstart = self.dataframe.shape[0]
+        Nfft = 2 ** np.ceil(np.log2(Nstart))
+        hilbert_pad = lambda x: hilbert(x, N=Nfft)[:Nstart]
+        newdf = self.dataframe.apply(hilbert_pad, raw=True)
+        newdf = newdf.apply(np.angle)
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 

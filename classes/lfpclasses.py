@@ -119,6 +119,9 @@ class LFPset(object):
         method 'wav': w parameter
         method 'spec': window length (in s) and fraction overlap
         """
+        if 'phase' in kwargs and kwargs['phase']:
+            dbscale = False
+
         series = self.dataframe[channel]
         if method == 'wav':
             callback = tf.continuous_wavelet

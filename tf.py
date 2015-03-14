@@ -44,10 +44,10 @@ def continuous_wavelet(series, freqs=None, bandwidth=4.5, phase=False, **kwargs)
     tfr = ssig.cwt(series.values, rwavelet, scales)
     tfi = ssig.cwt(series.values, iwavelet, scales)
 
-    if not phase:
-        tf = tfr ** 2 + tfi ** 2
-    else:
-        tf = np.arctan2(tfi, tfr)
+    tf = tfr ** 2 + tfi ** 2
+    if phase:
+        # return tf rescaled to unit circle
+        tf = (tfr + 1j * tfi) / tf
 
     return pd.DataFrame(tf.T, columns=freqs, index=series.index)
 
@@ -124,6 +124,11 @@ def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0,
     Tpre_x = Tpre - expand * dT 
     Tpost_x = Tpost + expand * dT
 
+    # if we want phase information, we cannot split the series into chunks 
+    # before doing the time-frequency transform
+    if 'phase' in kwargs and kwargs['phase']:
+        splitfirst = False
+
     specmats, times, freqs = _per_event_time_frequency(series, tffun, events, Tpre_x, Tpost_x, splitfirst, **kwargs)
 
     if len(specmats) == 0:
@@ -132,7 +137,12 @@ def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0,
     if normfun: 
         specmats = normfun(specmats) 
     
-    return _mean_from_events(specmats, times, freqs)[orig_slice]
+    mfe = _mean_from_events(specmats, times, freqs)[orig_slice]
+
+    if 'phase' in kwargs and kwargs['phase']:
+        mfe = np.abs(mfe)
+        
+    return mfe
 
 def _mean_from_events(specmats, times, freqs):
     """
@@ -151,11 +161,6 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=
     and return a tuple containing the list of time-frequency matrices
     (time x frequency), an array of times, and an array of frequencies.
     """
-    # if we want phase information, we cannot split the series into chunks 
-    # before doing the time-frequency transform
-    if 'phase' in kwargs and kwargs['phase']:
-        splitfirst = False
-
     if splitfirst:
         df = core._splitseries(series, events, Tpre, Tpost)
         if complete_only:

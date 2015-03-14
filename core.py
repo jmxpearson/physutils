@@ -185,7 +185,7 @@ def _bandlimit_series(df, band=(0.01, 120)):
     """
     dt = df.index[1] - df.index[0]
     band_dict = {'delta': (0.1, 4), 'theta': (4, 8), 'alpha': (8, 13), 
-    'beta': (13, 30), 'gamma': (30, 95)}
+    'beta': (13, 30), 'gamma': (30, 80)}
 
     # if band isn't a two-element sequence, it should be a string
     if isinstance(band, str):

@@ -102,7 +102,10 @@ def plot_time_frequency(spectrum, interpolation='bilinear',
     ax.set_xlim(extent[0], extent[1])
     ax.set_ylim(extent[2], extent[3])
     ax.images.append(im)
-    plt.colorbar(im, label='Power (dB/Hz)')
+    if 'colorbar_label' in kwargs:
+        plt.colorbar(im, label=kwargs['colorbar_label'])
+    else:
+        plt.colorbar(im, label='Power (dB/Hz)')
     plt.xlabel('Time (s)')
     plt.ylabel('Frequency (Hz)')
     return plt.gcf() 
@@ -141,7 +144,7 @@ def avg_time_frequency(series, tffun, events, Tpre, Tpost, expand=1.0,
 
     if 'phase' in kwargs and kwargs['phase']:
         mfe = np.abs(mfe)
-        
+
     return mfe
 
 def _mean_from_events(specmats, times, freqs):

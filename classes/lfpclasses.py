@@ -82,7 +82,8 @@ class LFPset(object):
         Nfft = 2 ** np.ceil(np.log2(Nstart))
         hilbert_pad = lambda x: hilbert(x, N=Nfft)[:Nstart]
         newdf = self.dataframe.apply(hilbert_pad, raw=True)
-        newdf = newdf.apply(np.angle)
+        # now normalize analytic signal to be on the unit circle:
+        newdf = newdf / newdf.apply(np.absolute)
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 

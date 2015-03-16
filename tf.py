@@ -185,3 +185,36 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=
 
     return (spectra, times, freqs)
 
+def phase_amplitude_coupling(fser, gser, lag=0):
+    """
+    Compute the product of two time series for calculation of phase-amplitude
+    coupling. That is, if the Hilbert transform of fser is A_f exp(\phi_f),
+    then the phase-amplitude product of fser and gser is 
+    f * g = A_f exp(\phi_g). Lag is the offset of f's amplitude from g's
+    phase: A(t) exp(\phi(t - lag)). This is useful for examining asymptotic
+    statistics in large-lag regime, where biases in the joint distribution
+    of A_f and \phi_g are not due to phase-amplitude coupling, but to the 
+    individual signals (cf. Canolty et al., Sciece, 2006, SI).
+    Function returns a series of the same length, but first and last lag 
+    elements are NaN.
+    """
+    fh = ssig.hilbert(fser)
+    gh = ssig.hilbert(gser)
+
+    Af = np.abs(fh)
+    ephig = gh / np.abs(gh)
+
+    if lag == 0:
+        pac = Af * ephig
+    else:
+        pac = Af * np.roll(ephig, lag)
+        pac[:lag] = np.nan
+        pac[-lag:] = np.nan
+
+    return pac
+
+
+
+
+
+

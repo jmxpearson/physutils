@@ -16,17 +16,24 @@ import pandas as pd
 class LFPset(object):
     def __init__(self, data, meta={}):
         # wrap passed data in constructor in case it's a series
-        self.dataframe = pd.DataFrame(data)
+        # don't use setattr, since this will cause recursion
+        self.__dict__['dataframe'] = pd.DataFrame(data)
         self.meta = meta  # dict of metadata 
 
     def __getattr__(self, name):
         return getattr(self.dataframe, name)
 
+    def __setattr__(self, name, value):
+        setattr(self.dataframe, name, value)
+
     def __str__(self):
         return self.dataframe.__str__()
 
     def __repr__(self):
-        return 'LFP dataset object containing a\n' + self.dataframe.__repr__()
+        return 'LFPset(' + self.dataframe.__repr__() + ')'
+
+    def __getitem__(self, key):
+        return self.dataframe.__getitem__(key)
 
     def decimate(self, decfrac):
         newdf = core.decimate(self.dataframe, decfrac)

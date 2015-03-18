@@ -35,12 +35,11 @@ def decimate(df, decfrac):
 
     for frac in decfrac:
         tindex = newdf.index[::frac]
-        parts = [pd.DataFrame(_arrdecimate(aa[1], frac), columns=[aa[0]]) 
-        for aa in newdf.iteritems()]
-        newdf = pd.concat(parts, axis=1)
-        newdf.index = tindex
-        newdf.index.name = df.index.name
-    return newdf
+        parts = [pd.DataFrame(_arrdecimate(aa[1], frac), columns=[aa[0]]) for aa in newdf.iteritems()]
+        outdf = pd.concat(parts, axis=1)
+        outdf.index = tindex
+        outdf.index.name = newdf.index.name
+    return outdf
 
 def _binseries(df, dt, col='time'):
     """

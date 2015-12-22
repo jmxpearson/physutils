@@ -16,7 +16,7 @@ def _rle(x):
 
 def _remove_short_runs(x, minlen, replace_val):
     """
-    Given an array x, replace all runs shorter than minlen with the 
+    Given an array x, replace all runs shorter than minlen with the
     value in replace_val. Returns a copy.
     """
     starts, runlens, values = _rle(x)
@@ -42,19 +42,19 @@ def _hansmooth(x, wlen):
 
 def censor_railing(x, thresh=3, toler=1e-2, minlen=10, smooth_wid=300):
     """
-    Given a numpy array x, censor the dataset by detecting and removing 
-    artifacts due to railing signal, returning a boolean 
-    array with the same shape as a flattened x, suitable for 
+    Given a numpy array x, censor the dataset by detecting and removing
+    artifacts due to railing signal, returning a boolean
+    array with the same shape as a flattened x, suitable for
     masking (i.e., True for censored data).
 
     Censoring happens as follows:
     * Mark all data exceeding a threshold of thresh * sig, where sig
     is an estimate of the standard deviation of the data based on the median.
-    * Mark all points at which the derivative of the data is less than 
+    * Mark all points at which the derivative of the data is less than
     a tolerance toler * sig.
-    * Take the intersection of these sets. Remove any sets of consecutive 
+    * Take the intersection of these sets. Remove any sets of consecutive
     points smaller than minlen as putative false positives.
-    * Expand the censoring region by smearing with a kernel of size 
+    * Expand the censoring region by smearing with a kernel of size
     smooth_wid.
     """
 
@@ -66,8 +66,36 @@ def censor_railing(x, thresh=3, toler=1e-2, minlen=10, smooth_wid=300):
     dx = np.diff(xx)
     dx = np.insert(dx, 0, np.inf)  # make same length as xx
 
-    is_artifact = np.logical_and(np.abs(dx) < toler * sig, 
+    is_artifact = np.logical_and(np.abs(dx) < toler * sig,
         np.abs(xx) > thresh * sig)
+
+    min_removed = _remove_short_runs(is_artifact, minlen, replace_val=False)
+    return _hansmooth(min_removed, smooth_wid).astype('bool')
+
+def censor_burst(x, thresh=6, minlen=10, smooth_wid=300):
+    """
+    Given a numpy array x, censor the dataset by detecting and removing
+    artifacts due to local power bursting, returning a boolean
+    array with the same shape as a flattened x, suitable for
+    masking (i.e., True for censored data).
+
+    Censoring happens as follows:
+    * Mark all data exceeding a threshold of sig, where sig
+    is an estimate of the standard deviation of the data based on the median.
+    * Mark all points at which the derivative of the data is less than
+    a tolerance toler * sig.
+    * Take the intersection of these sets. Remove any sets of consecutive
+    points smaller than minlen as putative false positives.
+    * Expand the censoring region by smearing with a kernel of size
+    smooth_wid.
+    """
+
+    # first off, flatten and de-mean
+    xx = x.ravel() - np.mean(x)
+
+    sig = np.median(abs(xx)) / 0.67449  # median(abs(xx)) / Phi^{-1}(0.75)
+
+    is_artifact = np.abs(xx) > thresh * sig
 
     min_removed = _remove_short_runs(is_artifact, minlen, replace_val=False)
     return _hansmooth(min_removed, smooth_wid).astype('bool')

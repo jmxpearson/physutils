@@ -167,9 +167,9 @@ def _per_event_time_frequency(series, tffun, events, Tpre, Tpost, complete_only=
     if splitfirst:
         df = core._splitseries(series, events, Tpre, Tpost)
         if complete_only:
-            spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems() if not np.any(np.isnan(ser))]
+            spectra = [tffun(ser, **kwargs) for (name, ser) in df.items() if not np.any(np.isnan(ser))]
         else:
-            spectra = [tffun(ser, **kwargs) for (name, ser) in df.iteritems()]
+            spectra = [tffun(ser, **kwargs) for (name, ser) in df.items()]
     else:
         tf_all = tffun(series, **kwargs)
         spectra, freqs = core.evtsplit(tf_all, events, Tpre, Tpost, return_by_event=True)

@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import scipy.signal as ssig
 import warnings
+from functools import reduce
 
 def _arrdecimate(x, decfrac, axis=-1):
     """
@@ -35,7 +36,7 @@ def decimate(df, decfrac):
 
     for frac in decfrac:
         tindex = newdf.index[::frac]
-        parts = [pd.DataFrame(_arrdecimate(aa[1], frac), columns=[aa[0]]) for aa in newdf.iteritems()]
+        parts = [pd.DataFrame(_arrdecimate(aa[1], frac), columns=[aa[0]]) for aa in newdf.items()]
         outdf = pd.concat(parts, axis=1)
         outdf.index = tindex
         outdf.index.name = newdf.index.name
@@ -93,7 +94,7 @@ def norm_by_trial(timetuple, method='division'):
             return df - baseline
 
     def normalize(framelist):
-        return map(norm_by_range, framelist)
+        return list(map(norm_by_range, framelist))
 
     return normalize
 
@@ -108,12 +109,12 @@ def norm_by_mean(timetuple, method='division'):
         return df[slice(*timetuple)].mean()
 
     def normalize(framelist):
-        all_baselines = map(get_baseline, framelist)
+        all_baselines = list(map(get_baseline, framelist))
         mean_baseline = reduce(lambda x, y: x.add(y, fill_value=0), all_baselines) / len(framelist)
         if method == 'division':
-            return map(lambda x: x.div(mean_baseline), framelist)
+            return [x.div(mean_baseline) for x in framelist]
         elif method == 'subtraction':
-            return map(lambda x: x - mean_baseline, framelist)
+            return [x - mean_baseline for x in framelist]
 
     return normalize
 
@@ -168,11 +169,11 @@ def evtsplit(df, events, Tpre, Tpost, t0=0.0, dt=0.001, timecolumn='time',
 
     if return_by_event:
         # make a panel (3D array) of all this data
-        panel = pd.Panel(dict(zip(idx, chunklist)))
+        panel = pd.Panel(dict(list(zip(idx, chunklist))))
         # transpose so that panel is events x time x series
         panel = panel.transpose(2, 1, 0)
         idx = panel.items
-        chunklist = [p for event, p in panel.iteritems()]
+        chunklist = [p for event, p in panel.items()]
 
     return chunklist, idx
 
@@ -210,8 +211,8 @@ def bandlimit(df, filters=None):
     allbands = pd.concat(bands, axis=1)
     
     # attend to labeling
-    fstr = map(str, filters)
-    bandpairs = zip(np.repeat(fstr, nchan), allbands.columns)
+    fstr = list(map(str, filters))
+    bandpairs = list(zip(np.repeat(fstr, nchan), allbands.columns))
     bandnames = [b[0] + '.' + str(b[1]) for b in bandpairs]
     allbands.columns = bandnames
 

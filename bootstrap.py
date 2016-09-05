@@ -1,5 +1,5 @@
 """
-Functions needed to allow for bootstrap significance testing of 
+Functions needed to allow for bootstrap significance testing of
 time-frequency data.
 """
 
@@ -25,9 +25,9 @@ def t_of_log(multarray, labels):
 
 def F_stat(multarray, labels, cdf=True):
     """
-    Given an a multidimensional array multarray and a set of trial labels 
+    Given an a multidimensional array multarray and a set of trial labels
     (0 and 1) corresponding to the 0th axis of multarray, return an array
-    of cdf values calculated from the F distribution that represents the 
+    of cdf values calculated from the F distribution that represents the
     ratio of means of the two label groups along the 0th dimension.
     If cdf is False, return the F statistic map.
     """
@@ -35,9 +35,9 @@ def F_stat(multarray, labels, cdf=True):
     arr0 = multarray[lls == 0]
     arr1 = multarray[lls == 1]
 
-    # if each element of arr0 is chi2(1), then the mean of d such 
+    # if each element of arr0 is chi2(1), then the mean of d such
     # arrays is chi2(d)/d, and a ratio of such variables is F(d1, d2)
-    chi2n = np.nanmean(arr0, axis=0) 
+    chi2n = np.nanmean(arr0, axis=0)
     chi2d = np.nanmean(arr1, axis=0)
 
     # calculate degrees of freedom: assume 2 per pixel per trial
@@ -52,11 +52,11 @@ def F_stat(multarray, labels, cdf=True):
         return fdist.cdf(Fmap, dfn, dfd)
     else:
         # return statistic itself
-        return Fmap 
+        return Fmap
 
 def normalized_diff_mean_power(multarray, labels, smoother_size=(5, 5)):
     lls = np.array(labels)  # make sure this is an array
-    # convert to log scale 
+    # convert to log scale
     arr0 = np.log(multarray[lls == 0])
     arr1 = np.log(multarray[lls == 1])
 
@@ -87,7 +87,7 @@ def normalized_diff_mean_power(multarray, labels, smoother_size=(5, 5)):
 def _arraylist_to_multarray(arraylist):
     """
     Convenience wrapper function. Converts arraylist to multidimensional
-    array. 
+    array.
     """
     multarray = np.dstack(arraylist).transpose((2, 0, 1))
     return multarray
@@ -139,18 +139,18 @@ def tstats(a, b, axis=0, equal_var=True):
 
 def make_thresholded_diff(arraylist, labels, lo=-np.inf, hi=np.inf, diff_fun=F_stat):
     """
-    Given a list of arrays and an array of labels designating conditions, 
+    Given a list of arrays and an array of labels designating conditions,
     calculate a difference map based on diff_fun. Return a masked array
     censored outside the interval (lo, hi).
     """
-    
-    diffarray = diff_fun(_arraylist_to_multarray(arraylist), labels) 
+
+    diffarray = diff_fun(_arraylist_to_multarray(arraylist), labels)
     return np.ma.masked_inside(diffarray, lo, hi)
 
 def select_clusters(arr, cluster_inds):
     """
     Given an array with entries corresponding to cluster labels
-    and an iterable of cluster indices, return a Boolean array 
+    and an iterable of cluster indices, return a Boolean array
     corresponding to which entries in arr are labeled with any of
     the indices in cluster_inds.
     """
@@ -164,14 +164,14 @@ def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, ke
     Given a list of arrays corresponding to single trials, a list of labels
     corresponding to classes, lo and hi thresholds, and keeplo and keephi
     significance thresholds for clusters, return an array
-    the size of arraylist[0] corresponding to True whenver the entry 
+    the size of arraylist[0] corresponding to True whenver the entry
     corresponds to a cluster larger than the significance threshold.
     """
     # get entries above hi threshold and below low threshold
     pos = make_thresholded_diff(arraylist, labels, hi=hi, diff_fun=diff_fun)
     neg = make_thresholded_diff(arraylist, labels, lo=lo, diff_fun=diff_fun)
 
-    # label clusters 
+    # label clusters
     posclus = label_clusters(pos)
     negclus = label_clusters(neg)
 
@@ -181,23 +181,23 @@ def threshold_clusters(arraylist, labels, lo=-np.inf, hi=np.inf, keeplo=None, ke
     # mask mass map based on clusters
     pos_mass = np.ma.masked_array(data=mass_map, mask=pos.mask)
     neg_mass = np.ma.masked_array(data=mass_map, mask=neg.mask)
-   
+
     # get cluster masses
     szhi = get_cluster_masses(pos_mass, posclus)
     szlo = get_cluster_masses(neg_mass, negclus)
-   
-    # which cluster numbers exceed size thresholds? 
-    hi_inds = np.flatnonzero(szhi >= keephi) 
+
+    # which cluster numbers exceed size thresholds?
+    hi_inds = np.flatnonzero(szhi >= keephi)
     lo_inds = np.flatnonzero(szlo <= keeplo)
-    
+
     # get rid of cluster labeled 0, which is background
     hi_inds = np.setdiff1d(hi_inds, np.array(0))
     lo_inds = np.setdiff1d(lo_inds, np.array(0))
-    
+
     # get Boolean mask for positive and negative clusters
     hi_img = select_clusters(posclus, hi_inds)
     lo_img = select_clusters(negclus, lo_inds)
-    
+
     newmask = ~np.logical_or(hi_img, lo_img)
     final_clusters = pos.copy()
     final_clusters.mask = newmask
@@ -207,7 +207,7 @@ def label_clusters(img):
     """
     Given a masked array, label all masked elements with 0 and each unmasked
     element with an integer index of the connected component to which
-    it belongs. 
+    it belongs.
     Assumes a 4-neighborhood for connectivity. Returns labeled array
     of same shape as input.
     """
@@ -244,8 +244,8 @@ def label_clusters(img):
 
     # get roots of union-find, construct a code dict to relabel them
     # as integers
-    roots = set(map(lambda x: x[0], uf.nodes.values()))
-    code_dict = dict(zip(roots, np.arange(1, len(roots) + 1)))
+    roots = set([x[0] for x in list(uf.nodes.values())])
+    code_dict = dict(list(zip(roots, np.arange(1, len(roots) + 1))))
 
     # second pass: label by root
     it = np.nditer(img, flags=['multi_index'])
@@ -276,22 +276,22 @@ def get_cluster_masses(arr, indices):
     counts = counts
     return counts
 
-def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=F_stat, mass_fun=log_F_stat, **kwargs): 
+def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, niter=1000, pval=0.05, method='wav', doplot=True, normfun=None, diff_fun=F_stat, mass_fun=log_F_stat, **kwargs):
     """
-    Given a data series 
+    Given a data series
     a two-element iterable (times) containing series of event times
-    pre and post-event windows to grab, 
-    an interable of high and low thresholds for the difference statistic 
-       to be used in thresholding pixels to cluster 
+    pre and post-event windows to grab,
+    an interable of high and low thresholds for the difference statistic
+       to be used in thresholding pixels to cluster
     a number of bootstrap iterations,
     a p-value for statistical significance,
-    a method for computing time-frequency, 
+    a method for computing time-frequency,
     additional arguments:
     normfun: used to normalize the time-frequency images prior to contrast
     diff_fun: function used to calculate the difference statistic between maps
     mass_fun: function to use in calculating masses of clusters for bootstrapping
     return a time-frequency dataframe (suitable for plotting) containing
-    the statistically significant clusters in the contrast between the 
+    the statistically significant clusters in the contrast between the
     two conditions (times[0] - times[1]).
     """
     if method == 'wav':
@@ -300,7 +300,7 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
         callback = tf.spectrogram
 
     dT = Tpost - Tpre
-    Tpre_x = Tpre - expand * dT 
+    Tpre_x = Tpre - expand * dT
     Tpost_x = Tpost + expand * dT
 
     # get time-frequency matrix for each event
@@ -367,7 +367,7 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     # get significance-masked array for statistic image
     truelabels = alllabels
     signif = threshold_clusters(spectra, truelabels, lo=thlo,
-        hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun, 
+        hi=thhi, keeplo=Clo, keephi=Chi, diff_fun=diff_fun,
         mass_fun=mass_fun)
 
     # make contrast image

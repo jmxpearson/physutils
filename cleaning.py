@@ -22,7 +22,7 @@ def _remove_short_runs(x, minlen, replace_val):
     starts, runlens, values = _rle(x)
     to_replace = runlens < minlen
     stops = starts + runlens
-    rngs = zip(starts[to_replace], stops[to_replace])
+    rngs = list(zip(starts[to_replace], stops[to_replace]))
     newx = x.copy()
     for rng in rngs:
         newx[slice(*rng)] = replace_val

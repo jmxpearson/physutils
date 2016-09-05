@@ -38,7 +38,7 @@ def _hansmooth(x, wlen):
     # grab last wlen samples, reverse, append to end
     xx = np.r_[x[wlen-1:0:-1], x, x[-1:-wlen:-1]]
     y = np.convolve(ww/ww.sum(),xx, mode='valid')
-    return y[(wlen/2 - 1):-wlen/2]
+    return y[(wlen//2 - 1):-wlen//2]
 
 def censor_railing(x, thresh=3, toler=1e-2, minlen=10, smooth_wid=300):
     """

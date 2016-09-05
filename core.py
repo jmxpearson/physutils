@@ -130,15 +130,15 @@ def _splitseries(df, ts, Tpre, Tpost, t0=0.0):
     xx = df.values.squeeze()
 
     nevt = ts.size
-    nstart = np.ceil(Tpre / dt)
-    nend = np.ceil(Tpost / dt)
+    nstart = int(np.ceil(Tpre / dt))
+    nend = int(np.ceil(Tpost / dt))
     binT = np.arange(nstart, nend) * dt
 
     evtrel = ts - t0
 
     elist = []
     for time in evtrel:
-        offset = np.around(time / dt)
+        offset = int(np.around(time / dt))
         ss = slice(nstart + offset, nend + offset)
         elist.append(pd.DataFrame(xx[ss], columns=[time]))
     alltrials = pd.concat(elist, axis=1)

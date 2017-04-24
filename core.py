@@ -36,7 +36,7 @@ def decimate(df, decfrac):
 
     for frac in decfrac:
         tindex = newdf.index[::frac]
-        parts = [pd.DataFrame(_arrdecimate(aa[1], frac), columns=[aa[0]]) for aa in newdf.items()]
+        parts = [pd.DataFrame(_arrdecimate(aa[1], frac), columns=[aa[0]]) for aa in newdf.iteritems()]
         outdf = pd.concat(parts, axis=1)
         outdf.index = tindex
         outdf.index.name = newdf.index.name
@@ -83,7 +83,7 @@ def smooth(df, wid):
 def norm_by_trial(timetuple, method='division'):
     """
     Given a list (one per trial) of dataframes, return a function that
-    returns a list of the same type in which each trial is normalized by 
+    returns a list of the same type in which each trial is normalized by
     the mean of the dataframe values in the range given by timetuple.
     """
     def norm_by_range(df):
@@ -100,8 +100,8 @@ def norm_by_trial(timetuple, method='division'):
 
 def norm_by_mean(timetuple, method='division'):
     """
-    Given a list (one per trial) of dataframes, return a normalizer 
-    function that returns a list of the same type in which all trials 
+    Given a list (one per trial) of dataframes, return a normalizer
+    function that returns a list of the same type in which all trials
     are normalized by the mean (across time) of the mean (across frames)
     of the dataframe values in the range given by timetuple.
     """
@@ -121,9 +121,9 @@ def norm_by_mean(timetuple, method='division'):
 def _splitseries(df, ts, Tpre, Tpost, t0=0.0):
     """
     Split time series data into peri-event chunks. Data are in df.
-    Times of events around which to split are in ts. 
-    Code grabs Tpre:Tpost bins relative to event, so times before 
-    the event have Tpre < 0. The first time bin is assumed to have 
+    Times of events around which to split are in ts.
+    Code grabs Tpre:Tpost bins relative to event, so times before
+    the event have Tpre < 0. The first time bin is assumed to have
     timestamp t0.
     """
     dt = df.index[1] - df.index[0]
@@ -147,7 +147,7 @@ def _splitseries(df, ts, Tpre, Tpost, t0=0.0):
     alltrials.columns = pd.Index(np.arange(nevt), name='trial')
     return alltrials
 
-def evtsplit(df, events, Tpre, Tpost, t0=0.0, dt=0.001, timecolumn='time', 
+def evtsplit(df, events, Tpre, Tpost, t0=0.0, dt=0.001, timecolumn='time',
     return_by_event=False):
     """
     split frame into chunks (Tpre, Tpost) around each event in events
@@ -184,7 +184,7 @@ def _bandlimit_series(df, band=(0.01, 120)):
     defined electrophysiological frequency band.
     """
     dt = df.index[1] - df.index[0]
-    band_dict = {'delta': (0.1, 4), 'theta': (4, 8), 'alpha': (8, 13), 
+    band_dict = {'delta': (0.1, 4), 'theta': (4, 8), 'alpha': (8, 13),
     'beta': (13, 30), 'gamma': (30, 80)}
 
     # if band isn't a two-element sequence, it should be a string
@@ -209,7 +209,7 @@ def bandlimit(df, filters=None):
     nchan = df.shape[1]
     bands = [_bandlimit_series(df, f) for f in filters]
     allbands = pd.concat(bands, axis=1)
-    
+
     # attend to labeling
     fstr = list(map(str, filters))
     bandpairs = list(zip(np.repeat(fstr, nchan), allbands.columns))
@@ -225,8 +225,8 @@ def psth(df, events, Tpre, Tpost, t0=0.0, rate=True, dt=0.001, timecolumn='time'
     should be negative for times preceding events. Accepts either
     a dataframe of timestamps or a dataframe of binned counts. Returns
     a dataframe, one column per unique combination of columns in df
-    (excluding timestamps) in the case of timestamp input or one 
-    column per column in the case of binned input. If rate=True, 
+    (excluding timestamps) in the case of timestamp input or one
+    column per column in the case of binned input. If rate=True,
     returns the mean spike rate across events. If rate is false, returns
     raw counts in each time bin.
     """

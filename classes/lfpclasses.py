@@ -52,6 +52,13 @@ class LFPset(object):
         newmeta = self.meta.copy()
         return LFPset(newdf, newmeta)
 
+    def demean_global(self):
+        gmean = self.dataframe.mean(axis=1)  # mean across channels
+        dmn = lambda x: (x - gmean)
+        newdf = self.dataframe.apply(dmn)
+        newmeta = self.meta.copy()
+        return LFPset(newdf, newmeta)
+
     def interpolate(self):
         newdf = self.dataframe.interpolate()
         newmeta = self.meta.copy()
@@ -75,7 +82,7 @@ class LFPset(object):
         # by padding up to next highest power of 2, we get a huge
         # performance boost; truncate afterward
         Nstart = self.dataframe.shape[0]
-        Nfft = 2 ** np.ceil(np.log2(Nstart))
+        Nfft = int(2 ** np.ceil(np.log2(Nstart)))
         hilbert_pad = lambda x: hilbert(x, N=Nfft)[:Nstart]
         newdf = self.dataframe.apply(hilbert_pad, raw=True)
         newdf = newdf.apply(np.absolute) ** 2

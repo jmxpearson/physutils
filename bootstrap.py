@@ -359,8 +359,8 @@ def significant_time_frequency(series, times, Tpre, Tpost, thresh, expand=1.0, n
     cluster_masses = np.sort(cluster_masses)
     plo = pval / 2.0
     phi = 1 - plo
-    Nlo = np.floor(cluster_masses.size * plo)
-    Nhi = np.ceil(cluster_masses.size * phi)
+    Nlo = int(np.floor(cluster_masses.size * plo))
+    Nhi = int(np.ceil(cluster_masses.size * phi))
     Clo = cluster_masses[Nlo]
     Chi = cluster_masses[Nhi]
 
